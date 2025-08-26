@@ -1,0 +1,46 @@
+/* landing-scroll-fix.css - Force native scrolling */
+html, body, #root {
+  height: auto !important;
+  overflow: auto !important;
+  touch-action: auto !important;
+  overscroll-behavior: auto !important;
+}
+
+.landing-page, .landing-root, .landing-wrapper {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+  position: relative !important;
+}
+
+/* Ensure hero doesn't block content flow */
+.hero {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+}
+
+/* Remove any fixed overlays that might block scrolling */
+.landing-page * {
+  pointer-events: auto !important;
+}
+
+/* Force scrollbar visibility */
+.landing-page {
+  scrollbar-width: auto !important;
+  -ms-overflow-style: auto !important;
+}
+
+.landing-page::-webkit-scrollbar {
+  display: block !important;
+  width: 8px !important;
+}
+
+.landing-page::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.landing-page::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 136, 0.5) !important;
+  border-radius: 4px !important;
+}

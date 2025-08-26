@@ -1,0 +1,48 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  background: #0f0f0f;
+  color: white;
+  overflow: hidden;
+  height: 100vh;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none;
+}
+
+#root {
+  height: 100vh;
+  background: #0f0f0f;
+  overflow: hidden;
+}
+
+/* Hide scrollbars for all elements */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+button { 
+  margin: 5px; 
+  padding: 8px 12px; 
+  cursor: pointer; 
+}
+
+input { 
+  margin: 5px; 
+  padding: 6px; 
+}
