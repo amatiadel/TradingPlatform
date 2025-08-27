@@ -1,80 +1,100 @@
-# React Trading Platform with localStorage Persistence
+# Binary Options Demo Client
 
-This React trading platform now includes localStorage persistence to maintain all trading data, balances, and settings across page refreshes.
+A React-based trading interface for binary options with real-time price data and charting capabilities.
 
 ## Features
 
-### Persistence
-- **Current Trades**: All active trades with expiry time, line price, type, amount, and pair are saved
-- **Balance**: Both demo and real account balances are preserved
-- **Trade History**: Completed trades are maintained
-- **Line Positions**: Trade lines on the chart are restored at their saved price levels
-- **User Settings**: Selected time (expiry), investment amount, trading pair, and timeframe are saved
-- **Account Type**: Demo/Real account selection is preserved
+- Real-time price updates via WebSocket
+- Interactive candlestick charts using lightweight-charts
+- Binary options trading simulation
+- User authentication and account management
+- Responsive design with modern UI
 
-### Automatic State Management
-- **On Page Load**: Automatically loads saved state from localStorage
-- **Expired Trade Processing**: Automatically resolves expired trades and updates balances
-- **Trade Line Cleanup**: Expired trade lines are automatically removed from the chart
-- **Real-time Saving**: All state changes are automatically saved to localStorage
-- **Chart Restoration**: Trade lines are redrawn at their saved price levels with correct remaining time
+## Binance API Pagination Implementation
 
-### Bug Fixes
-- **Trade Line Removal**: Trade lines now disappear immediately when countdown ends
-- **Timeframe Persistence**: Selected timeframe is preserved across page refreshes
-- **Active Trade Restoration**: Active trades are properly restored with correct remaining time and lines
+### Overview
 
-## Technical Implementation
+The trading chart now supports infinite scrolling for historical candles using Binance API pagination. This allows users to scroll back in time and automatically load older candlestick data without any manual intervention.
 
-### Storage Utility (`utils/storage.js`)
-```javascript
-export const saveState = (key, value) => {
-  localStorage.setItem(key, JSON.stringify(value));
-};
+### Key Features
 
-export const loadState = (key, defaultValue) => {
-  const saved = localStorage.getItem(key);
-  return saved ? JSON.parse(saved) : defaultValue;
-};
+1. **Initial Load**: Loads 500 latest candles when the chart is first displayed
+2. **Lazy Loading**: Automatically loads older candles when user scrolls left
+3. **Real-time Updates**: WebSocket stream continues providing live candle updates
+4. **Rate Limiting**: Respects Binance API limits (1200 requests/minute)
+5. **Duplicate Prevention**: Merges new data with existing candles without duplicates
+
+### Implementation Details
+
+#### API Endpoint
+Uses Binance Kline endpoint with pagination parameters:
+```
+GET /api/v3/klines?symbol=BTCUSDT&interval=1m&limit=500&endTime=...
 ```
 
-### Storage Keys
-- `trading_platform_trades_by_symbol`: All trades organized by symbol
-- `trading_platform_demo_balance`: Demo account balance
-- `trading_platform_real_balance`: Real account balance
-- `trading_platform_trade_lines_per_symbol`: Trade lines for chart restoration
-- `trading_platform_selected_time`: User's selected expiry time
-- `trading_platform_selected_investment`: User's selected investment amount
-- `trading_platform_selected_pair`: User's selected trading pair
-- `trading_platform_selected_timeframe`: User's selected chart timeframe
-- `trading_platform_account_type`: Account type (demo/real)
+#### Scroll Detection
+- Monitors chart's visible time range changes
+- Detects when user approaches the left edge (earliest loaded data)
+- Uses 60-second buffer to trigger loading before reaching the edge
 
-### Key Functions
-- `saveToStorage()`: Saves all current state to localStorage
-- `loadFromStorage()`: Loads all state from localStorage with defaults
-- `processExpiredTrades()`: Processes expired trades and updates balances
-- `processExpiredTradeLines()`: Removes expired trade lines from state
-- `restoreTradeLines()`: Restores trade lines on the chart with proper state updates
+#### Throttling
+- Scroll events are throttled to 300ms to prevent API spam
+- Rate limiting ensures minimum 50ms between API requests
+- Prevents concurrent requests with loading state management
 
-## Usage
+#### Data Management
+- Maintains complete candle dataset in memory
+- Merges new historical candles with existing data
+- Sorts candles chronologically to maintain proper order
+- Updates chart with complete dataset after each merge
 
-The persistence is completely automatic. Users can:
-1. Place trades normally
-2. Refresh the page at any time
-3. Return to find all their data exactly as it was
-4. See expired trades automatically resolved
-5. Continue trading with their preserved balance and settings
-6. Trade lines disappear immediately when trades expire
-7. Selected timeframe is maintained across refreshes
+### User Experience
 
-## Browser Compatibility
+1. **Visual Feedback**: Orange loading indicator appears when fetching historical data
+2. **Seamless Scrolling**: No interruption to chart interaction during loading
+3. **Automatic Detection**: No manual refresh needed - data loads automatically
+4. **Performance**: Efficient data merging and chart updates
 
-This implementation uses the standard `localStorage` API, which is supported in all modern browsers.
+### Technical Flow
 
-## Data Safety
+1. User scrolls left in the chart
+2. `handleTimeScaleVisibleRangeChange()` detects the scroll
+3. Checks if approaching earliest loaded data (with 60s buffer)
+4. Throttles the request (300ms delay)
+5. Calls `loadHistoricalCandles()` with appropriate `endTime`
+6. Fetches data from Binance API
+7. Merges new candles with existing data
+8. Updates chart with complete dataset
+9. Real-time WebSocket updates continue working
 
-- All data is stored locally in the browser
-- No data is sent to external servers for persistence
-- Data persists until the browser cache is cleared
-- Error handling prevents crashes if localStorage is unavailable
-- Expired trades and lines are automatically cleaned up on page load
+### Error Handling
+
+- Network errors are caught and displayed to user
+- Rate limiting prevents API abuse
+- Duplicate prevention ensures data integrity
+- Loading states prevent concurrent requests
+
+## Installation
+
+```bash
+npm install
+```
+
+## Development
+
+```bash
+npm run dev
+```
+
+## Build
+
+```bash
+npm run build
+```
+
+## Dependencies
+
+- React 18.2.0
+- lightweight-charts 4.2.3
+- socket.io-client 4.8.0
+- react-router-dom 7.8.2

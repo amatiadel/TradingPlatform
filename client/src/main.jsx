@@ -3,11 +3,14 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext'
 import App from './App'
-import Admin from './Admin'
+import Admin from './pages/Admin'
 import Login from './Login'
 import Signup from './Signup'
 import ProtectedRoute from './ProtectedRoute'
 import Landing from './pages/Landing'
+import Deposit from './pages/Deposit'
+import DepositConfirm from './pages/DepositConfirm'
+import Withdrawal from './pages/Withdrawal'
 import './styles.css'
 import './components/landing/landing.css'
 
@@ -69,6 +72,21 @@ const AuthWrapper = () => {
       <Route path="/" element={
         <ProtectedRoute>
           <App />
+        </ProtectedRoute>
+      } />
+      <Route path="/deposit" element={
+        <ProtectedRoute>
+          <Deposit />
+        </ProtectedRoute>
+      } />
+      <Route path="/deposit/confirm" element={
+        <ProtectedRoute>
+          <DepositConfirm />
+        </ProtectedRoute>
+      } />
+      <Route path="/withdrawal" element={
+        <ProtectedRoute>
+          <Withdrawal />
         </ProtectedRoute>
       } />
       <Route path="/admin" element={

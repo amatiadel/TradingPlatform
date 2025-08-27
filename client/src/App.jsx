@@ -1,9 +1,40 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useCallback } from "react";
 import { createChart } from "lightweight-charts";
 import { saveState, loadState } from "./utils/storage.js";
 import { saveUserState, loadUserState, USER_STORAGE_KEYS } from "./utils/userStorage.js";
 import { useAuth } from "./AuthContext";
 import io from "socket.io-client";
+import TimezoneSelector from "./components/TimezoneSelector";
+import { formatInOffset, DEFAULT_TIMEZONE_OFFSET, TIMEZONE_STORAGE_KEY } from "./utils/timezone";
+
+/**
+ * BINANCE API PAGINATION IMPLEMENTATION
+ * 
+ * This component implements infinite scrolling for historical candles using Binance API pagination.
+ * 
+ * Key Features:
+ * 1. Initial Load: Loads 500 latest candles on chart initialization
+ * 2. Lazy Loading: Automatically loads older candles when user scrolls left
+ * 3. Real-time Updates: WebSocket stream provides live candle updates
+ * 4. Rate Limiting: Respects Binance API limits (1200 requests/minute)
+ * 5. Duplicate Prevention: Merges data without creating duplicate candles
+ * 
+ * Implementation Details:
+ * - Uses Binance Kline endpoint: GET /api/v3/klines?symbol=BTCUSDT&interval=1m&limit=500&endTime=...
+ * - Scroll detection via lightweight-charts timeScale subscription
+ * - Throttled scroll events (300ms) to prevent API spam
+ * - Automatic data merging with existing candles
+ * - Visual loading indicators for user feedback
+ * 
+ * Data Flow:
+ * 1. User scrolls left → detect visible range change
+ * 2. Check if approaching earliest loaded data
+ * 3. Throttle and call loadHistoricalCandles()
+ * 4. Fetch from Binance API with endTime parameter
+ * 5. Merge new candles with existing data
+ * 6. Update chart with complete dataset
+ * 7. Real-time WebSocket updates continue working
+ */
 
 // Removed TradeLineOverlay component - using simple price lines + corner labels instead
 
@@ -13,6 +44,13 @@ export default function App() {
   const candleSeriesRef = useRef(null);
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
+  
+  // NEW: Historical data management refs
+  const isLoadingHistoricalRef = useRef(false);
+  const lastRequestTimeRef = useRef(0);
+  const earliestLoadedTimeRef = useRef(null);
+  const allCandlesRef = useRef([]);
+  const scrollThrottleRef = useRef(null);
   
   // Authentication
   const { user, logout } = useAuth();
@@ -40,6 +78,10 @@ export default function App() {
   const [currentPrice, setCurrentPrice] = useState(0);
   const [showTradeHistory, setShowTradeHistory] = useState(false);
   const [showTimePopup, setShowTimePopup] = useState(false);
+  
+  // NEW: Historical data loading states
+  const [isLoadingHistorical, setIsLoadingHistorical] = useState(false);
+  const [hasMoreHistoricalData, setHasMoreHistoricalData] = useState(true);
   const [showAccountPopup, setShowAccountPopup] = useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [showTradeDetailsModal, setShowTradeDetailsModal] = useState(false);
@@ -70,6 +112,12 @@ export default function App() {
   const [realBalance, setRealBalance] = useState(0);
   const [connectionStatus, setConnectionStatus] = useState("disconnected");
   const [streamType, setStreamType] = useState(() => loadState('streamType', "kline")); // "kline" or "trade"
+  
+  // Timezone state
+  const [timezoneOffset, setTimezoneOffset] = useState(() => {
+    const stored = localStorage.getItem(TIMEZONE_STORAGE_KEY);
+    return stored ? parseInt(stored, 10) : DEFAULT_TIMEZONE_OFFSET;
+  });
   
   // Socket.IO setup for real-time balance updates
   const socketRef = useRef(null);
@@ -490,8 +538,23 @@ export default function App() {
             close: parseFloat(kline.c),
           };
           
+          // NEW: Merge real-time candle with historical data
+          const existingCandles = allCandlesRef.current;
+          const existingIndex = existingCandles.findIndex(c => c.time === candle.time);
+          
+          if (existingIndex !== -1) {
+            // Update existing candle
+            existingCandles[existingIndex] = candle;
+          } else {
+            // Add new candle to the end
+            existingCandles.push(candle);
+            // Sort to maintain chronological order
+            existingCandles.sort((a, b) => a.time - b.time);
+          }
+          
+          // Update chart with merged data
           if (candleSeriesRef.current) {
-            candleSeriesRef.current.update(candle);
+            candleSeriesRef.current.setData(existingCandles);
           }
           
           setCurrentPrice(candle.close);
@@ -555,34 +618,122 @@ export default function App() {
     });
   };
 
-  // Load initial candlestick data from Binance REST API
-  const loadInitialCandles = async () => {
+  // Load historical candles from Binance REST API with pagination
+  const loadHistoricalCandles = useCallback(async (endTime = null, limit = 500) => {
+    // Prevent concurrent requests
+    if (isLoadingHistoricalRef.current) {
+      console.log("⏳ Historical data request already in progress, skipping...");
+      return;
+    }
+
+    // Rate limiting: respect Binance API limits (1200 requests/minute = 1 request per 50ms)
+    const now = Date.now();
+    const timeSinceLastRequest = now - lastRequestTimeRef.current;
+    if (timeSinceLastRequest < 50) {
+      console.log("⏳ Rate limiting: waiting before next request...");
+      return;
+    }
+
     try {
+      isLoadingHistoricalRef.current = true;
+      setIsLoadingHistorical(true);
+      lastRequestTimeRef.current = now;
+
       const symbolUpper = symbol.toUpperCase();
-      const binanceInterval = interval; // Binance uses same format
-      const url = `https://api.binance.com/api/v3/klines?symbol=${symbolUpper}&interval=${binanceInterval}&limit=200`;
+      const binanceInterval = interval;
       
-      console.log(`📊 Loading initial candles from: ${url}`);
+      // Build URL with pagination parameters
+      let url = `https://api.binance.com/api/v3/klines?symbol=${symbolUpper}&interval=${binanceInterval}&limit=${limit}`;
+      if (endTime) {
+        url += `&endTime=${endTime}`;
+      }
+      
+      console.log(`📊 Loading historical candles from: ${url}`);
       
       const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
       
-      if (Array.isArray(data)) {
-        const candles = data.map(item => ({
+      if (Array.isArray(data) && data.length > 0) {
+        const newCandles = data.map(item => ({
           time: Math.floor(item[0] / 1000), // Convert to seconds
           open: parseFloat(item[1]),
           high: parseFloat(item[2]),
           low: parseFloat(item[3]),
           close: parseFloat(item[4]),
         }));
+
+        // Sort candles by time to ensure proper order
+        newCandles.sort((a, b) => a.time - b.time);
+
+        // Merge with existing candles, avoiding duplicates
+        const existingCandles = allCandlesRef.current;
+        const mergedCandles = [...existingCandles];
         
-        if (candleSeriesRef.current && candles.length > 0) {
-          candleSeriesRef.current.setData(candles);
-          const latestCandle = candles[candles.length - 1];
-          setCurrentPrice(latestCandle.close);
-          console.log(`✅ Loaded ${candles.length} initial candles`);
+        newCandles.forEach(newCandle => {
+          const existingIndex = mergedCandles.findIndex(c => c.time === newCandle.time);
+          if (existingIndex === -1) {
+            mergedCandles.push(newCandle);
+          }
+        });
+
+        // Sort merged candles by time
+        mergedCandles.sort((a, b) => a.time - b.time);
+        
+        // Update refs and state
+        allCandlesRef.current = mergedCandles;
+        const earliestCandle = mergedCandles[0];
+        if (earliestCandle) {
+          earliestLoadedTimeRef.current = earliestCandle.time;
         }
+
+        // Update chart with all candles
+        if (candleSeriesRef.current && mergedCandles.length > 0) {
+          candleSeriesRef.current.setData(mergedCandles);
+          const latestCandle = mergedCandles[mergedCandles.length - 1];
+          setCurrentPrice(latestCandle.close);
+          console.log(`✅ Loaded ${newCandles.length} historical candles, total: ${mergedCandles.length}`);
+        }
+
+        // Check if we've reached the limit (less than requested candles returned)
+        if (data.length < limit) {
+          setHasMoreHistoricalData(false);
+          console.log("🏁 Reached end of available historical data");
+        }
+      } else {
+        // No more data available
+        setHasMoreHistoricalData(false);
+        console.log("🏁 No more historical data available");
       }
+    } catch (error) {
+      console.error("❌ Error loading historical candles:", error);
+      setError("Failed to load historical chart data");
+    } finally {
+      isLoadingHistoricalRef.current = false;
+      setIsLoadingHistorical(false);
+    }
+  }, [symbol, interval]);
+
+  // Load initial candlestick data from Binance REST API
+  const loadInitialCandles = async () => {
+    try {
+      // Reset historical data state
+      allCandlesRef.current = [];
+      earliestLoadedTimeRef.current = null;
+      setHasMoreHistoricalData(true);
+      setIsLoadingHistorical(false);
+      
+      // Clear any pending scroll throttle
+      if (scrollThrottleRef.current) {
+        clearTimeout(scrollThrottleRef.current);
+        scrollThrottleRef.current = null;
+      }
+      
+      // Load initial 500 candles
+      await loadHistoricalCandles(null, 500);
     } catch (error) {
       console.error("❌ Error loading initial candles:", error);
       setError("Failed to load initial chart data");
@@ -827,6 +978,10 @@ export default function App() {
           borderColor: '#2a2a2a',
           rightOffset: 5,
           barSpacing: 3,
+          tickMarkFormatter: (time) => {
+            const date = new Date(time * 1000);
+            return formatInOffset(date.getTime(), timezoneOffset);
+          },
         },
         rightPriceScale: {
           borderColor: '#2a2a2a',
@@ -838,6 +993,12 @@ export default function App() {
         },
         crosshair: {
           mode: 1,
+        },
+        localization: {
+          timeFormatter: (time) => {
+            const date = new Date(time * 1000);
+            return formatInOffset(date.getTime(), timezoneOffset);
+          },
         },
         handleScroll: {
           mouseWheel: true,
@@ -863,6 +1024,39 @@ export default function App() {
       });
       
       candleSeriesRef.current = candleSeries;
+
+      // NEW: Add scroll event handler for historical data loading
+      // This function detects when the user scrolls left (goes back in time) and automatically
+      // loads more historical candles from Binance API using pagination
+      const handleTimeScaleVisibleRangeChange = () => {
+        if (!hasMoreHistoricalData || isLoadingHistorical) {
+          return;
+        }
+
+        const timeScale = chart.timeScale();
+        const visibleRange = timeScale.getVisibleRange();
+        
+        if (visibleRange && visibleRange.from) {
+          // Check if we're approaching the left edge (earliest loaded data)
+          const earliestLoaded = earliestLoadedTimeRef.current;
+          if (earliestLoaded && visibleRange.from <= earliestLoaded + 60) { // 60 seconds buffer
+            // Throttle scroll events to avoid spamming API
+            if (scrollThrottleRef.current) {
+              clearTimeout(scrollThrottleRef.current);
+            }
+            
+            scrollThrottleRef.current = setTimeout(() => {
+              console.log("📜 Scroll detected: loading more historical data...");
+              // Load more historical data before the earliest loaded candle
+              // Convert to milliseconds for Binance API (endTime parameter)
+              loadHistoricalCandles(earliestLoaded * 1000, 500);
+            }, 300); // 300ms throttle to prevent excessive API calls
+          }
+        }
+      };
+
+      // Subscribe to time scale changes
+      chart.timeScale().subscribeVisibleTimeRangeChange(handleTimeScaleVisibleRangeChange);
 
       // CLEANUP: Remove any orphaned lines when chart is recreated
       cleanupAllTradeLines();
@@ -890,6 +1084,13 @@ export default function App() {
       window.addEventListener('resize', handleResize);
       return () => {
         window.removeEventListener('resize', handleResize);
+        
+        // NEW: Cleanup scroll throttle
+        if (scrollThrottleRef.current) {
+          clearTimeout(scrollThrottleRef.current);
+          scrollThrottleRef.current = null;
+        }
+        
         if (chartInstanceRef.current) {
           try {
             chartInstanceRef.current.remove();
@@ -902,7 +1103,7 @@ export default function App() {
       console.error("Chart setup error:", err);
       setError(err.message);
     }
-  }, [symbol, interval, user]); // Added user dependency to recreate chart on user change
+  }, [symbol, interval, user, timezoneOffset]); // Added timezoneOffset dependency to update chart on timezone change
 
   // WebSocket connection management effect
   useEffect(() => {
@@ -1131,16 +1332,12 @@ export default function App() {
 
   function formatDateTime(timestamp) {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleString();
+    return formatInOffset(date.getTime(), timezoneOffset);
   }
 
   function formatTime(timestamp) {
     const date = new Date(timestamp * 1000);
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: false 
-    });
+    return formatInOffset(date.getTime(), timezoneOffset);
   }
 
   function refillBalance() {
@@ -1383,6 +1580,13 @@ export default function App() {
               {connectionStatus.toUpperCase()}
             </div>
           </div>
+          
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Timezone:</span>
+            <div style={{ minWidth: "100px" }}>
+              <TimezoneSelector onTimezoneChange={setTimezoneOffset} />
+            </div>
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "15px", flexWrap: "wrap" }}>
@@ -1520,7 +1724,8 @@ export default function App() {
                         display: "flex",
                         justifyContent: "center"
                       }}>
-                        <div 
+                        <button
+                          onClick={() => window.location.href = '/admin'}
                           style={{
                             background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
                             color: "#000",
@@ -1533,12 +1738,106 @@ export default function App() {
                             border: "1px solid #ffaa00",
                             display: "flex",
                             alignItems: "center",
-                            gap: "4px"
+                            gap: "4px",
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow = "0 4px 8px rgba(255,136,0,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "0 2px 4px rgba(255,136,0,0.3)";
                           }}
                           aria-label="Admin"
                         >
                           🛡 Admin
-                        </div>
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Deposit Button - Only for real accounts */}
+                    {accountType === "real" && (
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <button
+                          onClick={() => window.location.href = '/deposit'}
+                          aria-label="Deposit"
+                          style={{
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)",
+                            border: "1px solid #00ff88",
+                            borderRadius: "8px",
+                            color: "#000",
+                            fontWeight: "bold",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
+                            transition: "all 0.2s ease",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px"
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #00ffaa 0%, #00ff88 100%)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
+                          }}
+                        >
+                          💰 Deposit
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Withdrawal Button - Only for real accounts */}
+                    {accountType === "real" && (
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <button
+                          onClick={() => window.location.href = '/withdrawal'}
+                          aria-label="Withdrawal"
+                          style={{
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
+                            border: "1px solid #ff8800",
+                            borderRadius: "8px",
+                            color: "#000",
+                            fontWeight: "bold",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 8px rgba(255,136,0,0.3)",
+                            transition: "all 0.2s ease",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px"
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow = "0 4px 12px rgba(255,136,0,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "0 2px 8px rgba(255,136,0,0.3)";
+                          }}
+                        >
+                          💸 Withdrawal
+                        </button>
                       </div>
                     )}
                     
@@ -1660,8 +1959,19 @@ export default function App() {
           minHeight: 0,
           overflow: "hidden",
           width: "100%",
-          height: "100%"
+          height: "100%",
+          display: "flex",
+          flexDirection: "column"
         }}>
+          {/* Chart Container */}
+          <div style={{ 
+            position: "relative", 
+            background: "#1a1a1a",
+            minHeight: 0,
+            overflow: "hidden",
+            width: "100%",
+            flex: 1
+          }}>
           {error && (
             <div style={{ 
               position: "absolute", 
@@ -1689,6 +1999,23 @@ export default function App() {
               zIndex: 1000 
             }}>
               Loading...
+            </div>
+          )}
+
+          {/* NEW: Historical data loading indicator */}
+          {isLoadingHistorical && (
+            <div style={{ 
+              position: "absolute", 
+              top: "50px", 
+              left: "10px", 
+              background: "#ff8800", 
+              color: "white", 
+              padding: "8px 12px", 
+              borderRadius: "4px", 
+              zIndex: 1000,
+              fontSize: "12px"
+            }}>
+              📊 Loading historical data...
             </div>
           )}
 
@@ -1818,6 +2145,7 @@ export default function App() {
               {activeTradeLines.length}
             </div>
           </div>
+        </div>
         </div>
 
         {/* Right Trading Panel */}

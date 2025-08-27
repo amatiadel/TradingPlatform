@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "../AuthContext";
+import AdminDepositPanel from "../components/admin/AdminDepositPanel";
+import AdminWithdrawalPanel from "../components/admin/AdminWithdrawalPanel";
 
 // Default trading pairs configuration
 const DEFAULT_PAIRS_CONFIG = {
@@ -22,7 +24,7 @@ export default function Admin() {
   const [pairsConfig, setPairsConfig] = useState(DEFAULT_PAIRS_CONFIG);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("");
-  const [activeTab, setActiveTab] = useState("pairs"); // "pairs" or "users"
+  const [activeTab, setActiveTab] = useState("pairs"); // "pairs", "users", "deposits", or "withdrawals"
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [usersError, setUsersError] = useState("");
@@ -83,8 +85,8 @@ export default function Admin() {
         throw new Error("Failed to fetch users");
       }
       
-      const usersData = await response.json();
-      setUsers(usersData);
+      const responseData = await response.json();
+      setUsers(responseData.users || []);
     } catch (error) {
       console.error("Error fetching users:", error);
       setUsersError(error.message);
@@ -372,6 +374,44 @@ export default function Admin() {
             <span style={{ fontSize: "16px" }}>👥</span>
             Users
           </button>
+          <button
+            onClick={() => setActiveTab("deposits")}
+            style={{
+              padding: "12px 24px",
+              background: activeTab === "deposits" ? "#00ff88" : "#2a2a2a",
+              border: "none",
+              borderRadius: "8px",
+              color: activeTab === "deposits" ? "#000" : "#fff",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>💰</span>
+            Deposit Requests
+          </button>
+          <button
+            onClick={() => setActiveTab("withdrawals")}
+            style={{
+              padding: "12px 24px",
+              background: activeTab === "withdrawals" ? "#00ff88" : "#2a2a2a",
+              border: "none",
+              borderRadius: "8px",
+              color: activeTab === "withdrawals" ? "#000" : "#fff",
+              fontSize: "16px",
+              fontWeight: "bold",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}
+          >
+            <span style={{ fontSize: "16px" }}>💸</span>
+            Withdrawal Requests
+          </button>
         </div>
 
         {/* Trading Pairs Management */}
@@ -626,7 +666,7 @@ export default function Admin() {
                   No users found
                 </div>
               ) : (
-                users.map(user => (
+                (users || []).map(user => (
                   <div key={user.id} style={{
                     display: "grid",
                     gridTemplateColumns: "80px 2fr 1fr 1fr 1fr 120px",
@@ -685,7 +725,7 @@ export default function Admin() {
           )}
 
           {/* Users Stats */}
-          {!usersLoading && !usersError && users.length > 0 && (
+          {!usersLoading && !usersError && (users || []).length > 0 && (
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
@@ -698,7 +738,7 @@ export default function Admin() {
                 textAlign: "center"
               }}>
                 <div style={{ fontSize: "24px", fontWeight: "bold", color: "#00ff88" }}>
-                  {users.length}
+                  {(users || []).length}
                 </div>
                 <div style={{ fontSize: "14px", color: "#999" }}>Total Users</div>
               </div>
@@ -709,7 +749,7 @@ export default function Admin() {
                 textAlign: "center"
               }}>
                 <div style={{ fontSize: "24px", fontWeight: "bold", color: "#ffaa00" }}>
-                  {users.reduce((sum, user) => sum + parseFloat(user.demoBalance), 0).toLocaleString()}
+                  {(users || []).reduce((sum, user) => sum + parseFloat(user.demoBalance), 0).toLocaleString()}
                 </div>
                 <div style={{ fontSize: "14px", color: "#999" }}>Total Demo Balance</div>
               </div>
@@ -720,7 +760,7 @@ export default function Admin() {
                 textAlign: "center"
               }}>
                 <div style={{ fontSize: "24px", fontWeight: "bold", color: "#ff4444" }}>
-                  {users.reduce((sum, user) => sum + parseFloat(user.realBalance), 0).toLocaleString()}
+                  {(users || []).reduce((sum, user) => sum + parseFloat(user.realBalance), 0).toLocaleString()}
                 </div>
                 <div style={{ fontSize: "14px", color: "#999" }}>Total Real Balance</div>
               </div>
@@ -731,13 +771,23 @@ export default function Admin() {
                 textAlign: "center"
               }}>
                 <div style={{ fontSize: "24px", fontWeight: "bold", color: "#00ff88" }}>
-                  {users.reduce((sum, user) => sum + user.activeTradesCount, 0)}
+                  {(users || []).reduce((sum, user) => sum + user.activeTradesCount, 0)}
                 </div>
                 <div style={{ fontSize: "14px", color: "#999" }}>Total Active Trades</div>
               </div>
             </div>
           )}
         </div>
+        )}
+
+        {/* Deposit Requests Panel */}
+        {activeTab === "deposits" && (
+          <AdminDepositPanel />
+        )}
+
+        {/* Withdrawal Requests Panel */}
+        {activeTab === "withdrawals" && (
+          <AdminWithdrawalPanel />
         )}
 
         {/* Info Section - Only show for pairs tab */}

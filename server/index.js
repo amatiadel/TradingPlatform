@@ -35,6 +35,7 @@ db.serialize(() => {
         isAdmin BOOLEAN DEFAULT 0,
         demoBalance REAL DEFAULT 10000,
         realBalance REAL DEFAULT 0,
+        timezoneOffsetMinutes INTEGER DEFAULT 180,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
       )`, (err) => {
         if (err) {
@@ -100,6 +101,13 @@ db.serialize(() => {
           });
         }
         
+        if (!columnNames.includes('timezoneOffsetMinutes')) {
+          db.run("ALTER TABLE users ADD COLUMN timezoneOffsetMinutes INTEGER DEFAULT 180", (err) => {
+            if (err) console.error('❌ Error adding timezoneOffsetMinutes column:', err);
+            else console.log('✅ Added timezoneOffsetMinutes column');
+          });
+        }
+        
         // Migrate existing users to have proper default values
         db.all("SELECT * FROM users", (err, users) => {
           if (err) {
@@ -135,6 +143,11 @@ db.serialize(() => {
                if (user.createdAt === null || user.createdAt === undefined) {
                  updates.push("createdAt = ?");
                  values.push(new Date().toISOString());
+               }
+               
+               if (user.timezoneOffsetMinutes === null || user.timezoneOffsetMinutes === undefined) {
+                 updates.push("timezoneOffsetMinutes = ?");
+                 values.push(180); // Default to UTC+03:00
                }
                
                if (updates.length > 0) {
@@ -227,6 +240,120 @@ db.serialize(() => {
       });
     } else {
       console.log('✅ Admin balance adjustments audit table already exists');
+    }
+  });
+
+  // Create deposit_requests table if it doesn't exist
+  db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='deposit_requests'", (err, tableExists) => {
+    if (!tableExists) {
+      db.run(`CREATE TABLE deposit_requests (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        userId INTEGER NOT NULL,
+        amount DECIMAL(12,2) NOT NULL,
+        selectedBonusPercent INTEGER DEFAULT 0,
+        promoCode TEXT,
+        promoBonusPercent INTEGER DEFAULT 0,
+        totalBonusPercent INTEGER NOT NULL,
+        bonusAmount DECIMAL(12,2) NOT NULL,
+        finalTotal DECIMAL(12,2) NOT NULL,
+        paymentMethod TEXT NOT NULL,
+        address TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('created', 'paid_pending', 'waiting_confirmation', 'approved', 'rejected', 'expired')),
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        paidAt DATETIME,
+        expiresAt DATETIME NOT NULL,
+        approvedAt DATETIME,
+        adminId INTEGER,
+        adminNote TEXT,
+        metadata TEXT,
+        FOREIGN KEY (userId) REFERENCES users(id),
+        FOREIGN KEY (adminId) REFERENCES users(id)
+      )`, (err) => {
+        if (err) {
+          console.error('❌ Error creating deposit_requests table:', err);
+        } else {
+          console.log('✅ Deposit requests table created');
+        }
+      });
+
+      // Create indexes for deposit_requests
+      db.run("CREATE INDEX idx_deposit_requests_user_id ON deposit_requests(userId)", (err) => {
+        if (err) console.error('❌ Error creating deposit_requests user_id index:', err);
+        else console.log('✅ Created deposit_requests user_id index');
+      });
+      
+      db.run("CREATE INDEX idx_deposit_requests_status ON deposit_requests(status)", (err) => {
+        if (err) console.error('❌ Error creating deposit_requests status index:', err);
+        else console.log('✅ Created deposit_requests status index');
+      });
+      
+      db.run("CREATE INDEX idx_deposit_requests_created_at ON deposit_requests(createdAt)", (err) => {
+        if (err) console.error('❌ Error creating deposit_requests created_at index:', err);
+        else console.log('✅ Created deposit_requests created_at index');
+      });
+      
+      db.run("CREATE INDEX idx_deposit_requests_expires_at ON deposit_requests(expiresAt)", (err) => {
+        if (err) console.error('❌ Error creating deposit_requests expires_at index:', err);
+        else console.log('✅ Created deposit_requests expires_at index');
+      });
+    } else {
+      console.log('✅ Deposit requests table already exists');
+    }
+  });
+
+  // Create promo_codes table if it doesn't exist
+  db.get("SELECT name FROM sqlite_master WHERE type='table' AND name='promo_codes'", (err, tableExists) => {
+    if (!tableExists) {
+      db.run(`CREATE TABLE promo_codes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        code TEXT UNIQUE NOT NULL,
+        bonusPercent INTEGER NOT NULL,
+        isActive BOOLEAN DEFAULT 1,
+        maxUses INTEGER DEFAULT -1,
+        currentUses INTEGER DEFAULT 0,
+        validFrom DATETIME DEFAULT CURRENT_TIMESTAMP,
+        validUntil DATETIME,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      )`, (err) => {
+        if (err) {
+          console.error('❌ Error creating promo_codes table:', err);
+        } else {
+          console.log('✅ Promo codes table created');
+          
+          // Insert sample promo codes
+          db.run("INSERT INTO promo_codes (code, bonusPercent, maxUses, validUntil) VALUES (?, ?, ?, ?)", 
+            ['DEPOSIT20', 20, 100, '2025-12-31 23:59:59'], (err) => {
+              if (err) console.error('❌ Error inserting DEPOSIT20 promo code:', err);
+              else console.log('✅ Inserted DEPOSIT20 promo code');
+            });
+          
+          db.run("INSERT INTO promo_codes (code, bonusPercent, maxUses, validUntil) VALUES (?, ?, ?, ?)", 
+            ['WELCOME25', 25, 50, '2025-12-31 23:59:59'], (err) => {
+              if (err) console.error('❌ Error inserting WELCOME25 promo code:', err);
+              else console.log('✅ Inserted WELCOME25 promo code');
+            });
+          
+          db.run("INSERT INTO promo_codes (code, bonusPercent, maxUses, validUntil) VALUES (?, ?, ?, ?)", 
+            ['BONUS30', 30, 25, '2025-12-31 23:59:59'], (err) => {
+              if (err) console.error('❌ Error inserting BONUS30 promo code:', err);
+              else console.log('✅ Inserted BONUS30 promo code');
+            });
+        }
+      });
+
+      // Create indexes for promo_codes
+      db.run("CREATE INDEX idx_promo_codes_code ON promo_codes(code)", (err) => {
+        if (err) console.error('❌ Error creating promo_codes code index:', err);
+        else console.log('✅ Created promo_codes code index');
+      });
+      
+      db.run("CREATE INDEX idx_promo_codes_active ON promo_codes(isActive)", (err) => {
+        if (err) console.error('❌ Error creating promo_codes active index:', err);
+        else console.log('✅ Created promo_codes active index');
+      });
+    } else {
+      console.log('✅ Promo codes table already exists');
     }
   });
 });
@@ -438,6 +565,36 @@ io.on("connection", (socket) => {
       }
       
       socket.emit("balance", balance);
+    });
+  });
+
+  // Join user-specific room for deposit notifications
+  socket.on("join_user_room", (data) => {
+    if (!socket.userId) {
+      socket.emit("error", { message: "Authentication required" });
+      return;
+    }
+    
+    socket.join(`user:${socket.userId}`);
+    console.log(`👤 User ${socket.userId} joined user room for deposit notifications`);
+  });
+
+  // Join admin room for deposit notifications
+  socket.on("join_admin_room", (data) => {
+    if (!socket.userId) {
+      socket.emit("error", { message: "Authentication required" });
+      return;
+    }
+    
+    // Check if user is admin
+    db.get("SELECT isAdmin FROM users WHERE id = ?", [socket.userId], (err, row) => {
+      if (err || !row || !row.isAdmin) {
+        socket.emit("error", { message: "Admin access required" });
+        return;
+      }
+      
+      socket.join("admin_room");
+      console.log(`👑 Admin ${socket.userId} joined admin room for deposit notifications`);
     });
   });
 
@@ -1023,7 +1180,7 @@ app.post('/auth/login', (req, res) => {
 });
 
 app.get('/auth/me', authenticateToken, (req, res) => {
-  db.get("SELECT id, username, isAdmin, demoBalance, realBalance FROM users WHERE id = ?", 
+  db.get("SELECT id, username, isAdmin, demoBalance, realBalance, timezoneOffsetMinutes FROM users WHERE id = ?", 
     [req.user.id], (err, row) => {
       if (err) {
         return res.status(500).json({ error: 'Database error' });
@@ -1039,7 +1196,8 @@ app.get('/auth/me', authenticateToken, (req, res) => {
           username: row.username,
           isAdmin: row.isAdmin,
           demoBalance: row.demoBalance,
-          realBalance: row.realBalance
+          realBalance: row.realBalance,
+          timezoneOffsetMinutes: row.timezoneOffsetMinutes || 180
         }
       });
     });
@@ -1165,40 +1323,142 @@ app.get('/api/user/trades/:tradeId', authenticateToken, (req, res) => {
     });
 });
 
+// User settings endpoints
+app.get('/api/user/settings', authenticateToken, (req, res) => {
+  db.get("SELECT timezoneOffsetMinutes FROM users WHERE id = ?", 
+    [req.user.id], (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Database error' });
+      }
+      
+      res.json({
+        timezoneOffsetMinutes: row.timezoneOffsetMinutes || 180
+      });
+    });
+});
+
+app.patch('/api/user/settings/timezone', authenticateToken, (req, res) => {
+  const { timezoneOffsetMinutes } = req.body;
+  
+  // Validate timezone offset
+  if (typeof timezoneOffsetMinutes !== 'number' || 
+      timezoneOffsetMinutes < -720 || timezoneOffsetMinutes > 840) {
+    return res.status(400).json({ 
+      error: 'Invalid timezone offset. Must be between -720 and +840 minutes.' 
+    });
+  }
+  
+  db.run("UPDATE users SET timezoneOffsetMinutes = ? WHERE id = ?", 
+    [timezoneOffsetMinutes, req.user.id], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Failed to update timezone setting' });
+      }
+      
+      res.json({ 
+        message: 'Timezone setting updated successfully',
+        timezoneOffsetMinutes: timezoneOffsetMinutes
+      });
+    });
+});
+
 // Admin API endpoints
 app.get('/api/admin/users', authenticateToken, requireAdmin, (req, res) => {
-  const { page = 1, pageSize = 50 } = req.query;
-  const offset = (page - 1) * pageSize;
+  const { page = 1, pageSize = 50, search = '', sort = 'id' } = req.query;
   
-  // Query to get all users with their balances and active trade counts
-  const query = `
-    SELECT 
-      u.id,
-      u.username,
-      COALESCE(u.demoBalance, 0) AS demoBalance,
-      COALESCE(u.realBalance, 0) AS realBalance,
-      (SELECT COUNT(1) FROM trades t WHERE t.userId = u.id AND t.result IS NULL) AS activeTradesCount
-    FROM users u
-    ORDER BY u.id
-    LIMIT ? OFFSET ?
-  `;
+  // Validate and sanitize inputs
+  const pageNum = Math.max(1, parseInt(page) || 1);
+  const pageSizeNum = Math.min(200, Math.max(1, parseInt(pageSize) || 50));
+  const offset = (pageNum - 1) * pageSizeNum;
   
-  db.all(query, [pageSize, offset], (err, rows) => {
+  // Validate sort parameter
+  const allowedSortFields = ['id', 'username', 'createdAt'];
+  const sortField = allowedSortFields.includes(sort) ? sort : 'id';
+  
+  // Determine if search is numeric (ID search) or string (username search)
+  const isNumericSearch = /^\d+$/.test(search.trim());
+  const searchTerm = search.trim();
+  
+  let query, params;
+  
+  if (searchTerm) {
+    if (isNumericSearch) {
+      // Search by exact ID
+      query = `
+        SELECT 
+          COUNT(*) OVER() AS total,
+          u.id,
+          u.username,
+          u.createdAt,
+          COALESCE(u.demoBalance, 0) AS demoBalance,
+          COALESCE(u.realBalance, 0) AS realBalance,
+          (SELECT COUNT(1) FROM trades t WHERE t.userId = u.id AND t.result IS NULL) AS activeTradesCount
+        FROM users u
+        WHERE u.id = ?
+        ORDER BY u.${sortField}
+        LIMIT ? OFFSET ?
+      `;
+      params = [parseInt(searchTerm), pageSizeNum, offset];
+    } else {
+      // Search by username (case-insensitive, partial match)
+      query = `
+        SELECT 
+          COUNT(*) OVER() AS total,
+          u.id,
+          u.username,
+          u.createdAt,
+          COALESCE(u.demoBalance, 0) AS demoBalance,
+          COALESCE(u.realBalance, 0) AS realBalance,
+          (SELECT COUNT(1) FROM trades t WHERE t.userId = u.id AND t.result IS NULL) AS activeTradesCount
+        FROM users u
+        WHERE u.username LIKE ?
+        ORDER BY u.${sortField}
+        LIMIT ? OFFSET ?
+      `;
+      params = [`%${searchTerm}%`, pageSizeNum, offset];
+    }
+  } else {
+    // No search - return all users with pagination
+    query = `
+      SELECT 
+        COUNT(*) OVER() AS total,
+        u.id,
+        u.username,
+        u.createdAt,
+        COALESCE(u.demoBalance, 0) AS demoBalance,
+        COALESCE(u.realBalance, 0) AS realBalance,
+        (SELECT COUNT(1) FROM trades t WHERE t.userId = u.id AND t.result IS NULL) AS activeTradesCount
+      FROM users u
+      ORDER BY u.${sortField}
+      LIMIT ? OFFSET ?
+    `;
+    params = [pageSizeNum, offset];
+  }
+  
+  db.all(query, params, (err, rows) => {
     if (err) {
       console.error('Error fetching users:', err);
       return res.status(500).json({ error: 'Failed to fetch users' });
     }
     
+    // Get total count from first row (if exists)
+    const total = rows.length > 0 ? rows[0].total : 0;
+    
     // Format the response
     const users = rows.map(user => ({
       id: user.id,
       username: user.username,
+      createdAt: user.createdAt,
       demoBalance: parseFloat(user.demoBalance || 0).toFixed(2),
       realBalance: parseFloat(user.realBalance || 0).toFixed(2),
       activeTradesCount: user.activeTradesCount || 0
     }));
     
-    res.json(users);
+    res.json({
+      total,
+      page: pageNum,
+      pageSize: pageSizeNum,
+      users
+    });
   });
 });
 
@@ -1313,6 +1573,872 @@ app.patch('/api/admin/users/:id/balance', authenticateToken, requireAdmin, (req,
             });
           });
       });
+    });
+  });
+});
+
+// Deposit-related API endpoints
+
+// Validate promo code
+app.get('/api/promo-codes/:code', (req, res) => {
+  const { code } = req.params;
+  
+  db.get("SELECT * FROM promo_codes WHERE code = ? AND isActive = 1 AND (validUntil IS NULL OR validUntil > datetime('now'))", 
+    [code], (err, row) => {
+      if (err) {
+        console.error('Error validating promo code:', err);
+        return res.status(500).json({ error: 'Failed to validate promo code' });
+      }
+      
+      if (!row) {
+        return res.status(404).json({ error: 'Invalid or expired promo code' });
+      }
+      
+      // Check usage limits
+      if (row.maxUses > 0 && row.currentUses >= row.maxUses) {
+        return res.status(400).json({ error: 'Promo code usage limit reached' });
+      }
+      
+      res.json({
+        code: row.code,
+        bonusPercent: row.bonusPercent,
+        maxUses: row.maxUses,
+        currentUses: row.currentUses
+      });
+    });
+});
+
+// Create deposit request
+app.post('/api/user/deposit-request', authenticateToken, (req, res) => {
+  const { amount, selectedBonusPercent, promoCode, paymentMethod } = req.body;
+  const userId = req.user.id;
+
+  // Validation
+  if (!amount || isNaN(amount) || amount < 10 || amount > 50000) {
+    return res.status(400).json({ error: 'Amount must be between $10 and $50,000' });
+  }
+
+  if (!paymentMethod) {
+    return res.status(400).json({ error: 'Payment method is required' });
+  }
+
+  if (selectedBonusPercent && (selectedBonusPercent < 0 || selectedBonusPercent > 100)) {
+    return res.status(400).json({ error: 'Invalid bonus percentage' });
+  }
+
+  // Validate amount has max 2 decimal places
+  if (amount.toString().includes('.') && amount.toString().split('.')[1].length > 2) {
+    return res.status(400).json({ error: 'Amount can have maximum 2 decimal places' });
+  }
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    // Validate promo code if provided
+    if (promoCode) {
+      console.log(`🔍 Validating promo code: ${promoCode}`);
+      db.get("SELECT * FROM promo_codes WHERE code = ? AND isActive = 1 AND (validUntil IS NULL OR validUntil > datetime('now'))", 
+        [promoCode], (err, row) => {
+          if (err) {
+            db.run('ROLLBACK');
+            console.error('Error validating promo code:', err);
+            return res.status(500).json({ error: 'Failed to validate promo code' });
+          }
+          
+          if (!row) {
+            db.run('ROLLBACK');
+            return res.status(400).json({ error: 'Invalid or expired promo code' });
+          }
+          
+          // Check usage limits
+          if (row.maxUses > 0 && row.currentUses >= row.maxUses) {
+            db.run('ROLLBACK');
+            return res.status(400).json({ error: 'Promo code usage limit reached' });
+          }
+          
+          // Calculate bonus and final total with promo code
+          const promoBonusPercent = row.bonusPercent;
+          const totalBonusPercent = (selectedBonusPercent || 0) + promoBonusPercent;
+          const bonusAmount = (amount * totalBonusPercent) / 100;
+          const finalTotal = parseFloat(amount) + parseFloat(bonusAmount);
+          
+          console.log(`💰 Promo code validated: ${promoCode}, Bonus: ${promoBonusPercent}%, Total Bonus: ${totalBonusPercent}%, Bonus Amount: $${bonusAmount}, Final Total: $${finalTotal}`);
+
+          // Generate wallet address (in production, this would be a real crypto address)
+          const address = `T${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+          // Set expiration time (24 hours from now)
+          const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+          // Create deposit request
+          db.run(`INSERT INTO deposit_requests (
+            userId, amount, selectedBonusPercent, promoCode, promoBonusPercent, 
+            totalBonusPercent, bonusAmount, finalTotal, paymentMethod, address, 
+            status, expiresAt
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created', ?)`, 
+          [userId, amount, selectedBonusPercent || 0, promoCode, promoBonusPercent, 
+           totalBonusPercent, bonusAmount, finalTotal, paymentMethod, address, expiresAt], 
+          function(err) {
+            if (err) {
+              db.run('ROLLBACK');
+              console.error('Error creating deposit request:', err);
+              return res.status(500).json({ error: 'Failed to create deposit request' });
+            }
+
+            const depositId = this.lastID;
+
+            // Update promo code usage
+            db.run("UPDATE promo_codes SET currentUses = currentUses + 1 WHERE id = ?", 
+              [row.id], (err) => {
+                if (err) {
+                  console.error('Error updating promo code usage:', err);
+                  // Don't fail the request for this error
+                }
+              });
+
+            // Commit transaction
+            db.run('COMMIT', (err) => {
+              if (err) {
+                console.error('Error committing transaction:', err);
+                return res.status(500).json({ error: 'Failed to create deposit request' });
+              }
+
+              console.log(`💰 Created deposit request ${depositId} for user ${userId}: $${amount} (${totalBonusPercent}% bonus)`);
+
+              res.json({
+                id: depositId,
+                status: 'created',
+                address: address,
+                expiresAt: expiresAt,
+                amount: parseFloat(amount).toFixed(2),
+                bonusAmount: parseFloat(bonusAmount).toFixed(2),
+                finalTotal: parseFloat(finalTotal).toFixed(2)
+              });
+            });
+          });
+        });
+    } else {
+      // No promo code - calculate bonus and final total without promo
+      const totalBonusPercent = selectedBonusPercent || 0;
+      const bonusAmount = (amount * totalBonusPercent) / 100;
+      const finalTotal = parseFloat(amount) + parseFloat(bonusAmount);
+
+      // Generate wallet address (in production, this would be a real crypto address)
+      const address = `T${Math.random().toString(36).substring(2, 15)}${Math.random().toString(36).substring(2, 15)}`;
+
+      // Set expiration time (24 hours from now)
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+      // Create deposit request
+      db.run(`INSERT INTO deposit_requests (
+        userId, amount, selectedBonusPercent, promoCode, promoBonusPercent, 
+        totalBonusPercent, bonusAmount, finalTotal, paymentMethod, address, 
+        status, expiresAt
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'created', ?)`, 
+      [userId, amount, selectedBonusPercent || 0, null, 0, 
+       totalBonusPercent, bonusAmount, finalTotal, paymentMethod, address, expiresAt], 
+      function(err) {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error('Error creating deposit request:', err);
+          return res.status(500).json({ error: 'Failed to create deposit request' });
+        }
+
+        const depositId = this.lastID;
+
+        // Commit transaction
+        db.run('COMMIT', (err) => {
+          if (err) {
+            console.error('Error committing transaction:', err);
+            return res.status(500).json({ error: 'Failed to create deposit request' });
+          }
+
+          console.log(`💰 Created deposit request ${depositId} for user ${userId}: $${amount} (${totalBonusPercent}% bonus)`);
+
+          res.json({
+            id: depositId,
+            status: 'created',
+            address: address,
+            expiresAt: expiresAt,
+            amount: parseFloat(amount).toFixed(2),
+            bonusAmount: parseFloat(bonusAmount).toFixed(2),
+            finalTotal: parseFloat(finalTotal).toFixed(2)
+          });
+        });
+      });
+    }
+  });
+});
+
+// Mark deposit as paid
+app.patch('/api/user/deposit-request/:id/mark-paid', authenticateToken, (req, res) => {
+  const depositId = parseInt(req.params.id);
+  const userId = req.user.id;
+
+  db.get("SELECT * FROM deposit_requests WHERE id = ? AND userId = ?", 
+    [depositId, userId], (err, row) => {
+      if (err) {
+        console.error('Error fetching deposit request:', err);
+        return res.status(500).json({ error: 'Failed to fetch deposit request' });
+      }
+
+      if (!row) {
+        return res.status(404).json({ error: 'Deposit request not found' });
+      }
+
+      if (row.status !== 'created') {
+        return res.status(400).json({ error: 'Deposit request cannot be marked as paid' });
+      }
+
+      // Check if expired
+      if (new Date(row.expiresAt) < new Date()) {
+        db.run("UPDATE deposit_requests SET status = 'expired' WHERE id = ?", [depositId]);
+        return res.status(400).json({ error: 'Deposit request has expired' });
+      }
+
+      // Update status to waiting_confirmation
+      db.run("UPDATE deposit_requests SET status = 'waiting_confirmation', paidAt = datetime('now') WHERE id = ?", 
+        [depositId], (err) => {
+          if (err) {
+            console.error('Error updating deposit request:', err);
+            return res.status(500).json({ error: 'Failed to update deposit request' });
+          }
+
+          console.log(`💰 Deposit request ${depositId} marked as paid by user ${userId}`);
+
+          // Emit socket event to admins
+          io.emit('admin:deposit:waiting_confirmation', {
+            id: depositId,
+            userId: userId,
+            amount: row.amount,
+            finalTotal: row.finalTotal,
+            paymentMethod: row.paymentMethod,
+            address: row.address,
+            paidAt: new Date().toISOString()
+          });
+
+          res.json({
+            success: true,
+            status: 'waiting_confirmation',
+            message: 'Payment marked as sent. Waiting for admin confirmation.'
+          });
+        });
+    });
+});
+
+// Get user's deposit requests
+app.get('/api/user/deposit-requests', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const { status } = req.query;
+
+  let query = "SELECT * FROM deposit_requests WHERE userId = ?";
+  let params = [userId];
+
+  if (status) {
+    query += " AND status = ?";
+    params.push(status);
+  }
+
+  query += " ORDER BY createdAt DESC LIMIT 50";
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching deposit requests:', err);
+      return res.status(500).json({ error: 'Failed to fetch deposit requests' });
+    }
+
+    const requests = rows.map(row => ({
+      id: row.id,
+      amount: parseFloat(row.amount).toFixed(2),
+      bonusAmount: parseFloat(row.bonusAmount).toFixed(2),
+      finalTotal: parseFloat(row.finalTotal).toFixed(2),
+      paymentMethod: row.paymentMethod,
+      status: row.status,
+      createdAt: row.createdAt,
+      paidAt: row.paidAt,
+      expiresAt: row.expiresAt,
+      approvedAt: row.approvedAt
+    }));
+
+    res.json(requests);
+  });
+});
+
+// Get specific deposit request
+app.get('/api/user/deposit-request/:id', authenticateToken, (req, res) => {
+  const depositId = parseInt(req.params.id);
+  const userId = req.user.id;
+
+  db.get("SELECT * FROM deposit_requests WHERE id = ? AND userId = ?", 
+    [depositId, userId], (err, row) => {
+      if (err) {
+        console.error('Error fetching deposit request:', err);
+        return res.status(500).json({ error: 'Failed to fetch deposit request' });
+      }
+
+      if (!row) {
+        return res.status(404).json({ error: 'Deposit request not found' });
+      }
+
+      res.json({
+        id: row.id,
+        amount: parseFloat(row.amount).toFixed(2),
+        bonusAmount: parseFloat(row.bonusAmount).toFixed(2),
+        finalTotal: parseFloat(row.finalTotal).toFixed(2),
+        paymentMethod: row.paymentMethod,
+        address: row.address,
+        status: row.status,
+        createdAt: row.createdAt,
+        paidAt: row.paidAt,
+        expiresAt: row.expiresAt,
+        approvedAt: row.approvedAt
+      });
+    });
+});
+
+// Admin endpoints for deposit management
+
+// Get all deposit requests (admin)
+app.get('/api/admin/deposit-requests', authenticateToken, requireAdmin, (req, res) => {
+  const { status, page = 1, limit = 50 } = req.query;
+  const offset = (parseInt(page) - 1) * parseInt(limit);
+
+  let query = `
+    SELECT dr.*, u.username 
+    FROM deposit_requests dr 
+    JOIN users u ON dr.userId = u.id
+  `;
+  let params = [];
+
+  if (status) {
+    query += " WHERE dr.status = ?";
+    params.push(status);
+  }
+
+  query += " ORDER BY dr.createdAt DESC LIMIT ? OFFSET ?";
+  params.push(parseInt(limit), offset);
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching deposit requests:', err);
+      return res.status(500).json({ error: 'Failed to fetch deposit requests' });
+    }
+
+    const requests = rows.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      username: row.username,
+      amount: parseFloat(row.amount).toFixed(2),
+      bonusAmount: parseFloat(row.bonusAmount).toFixed(2),
+      finalTotal: parseFloat(row.finalTotal).toFixed(2),
+      paymentMethod: row.paymentMethod,
+      address: row.address,
+      status: row.status,
+      createdAt: row.createdAt,
+      paidAt: row.paidAt,
+      expiresAt: row.expiresAt,
+      approvedAt: row.approvedAt,
+      adminNote: row.adminNote
+    }));
+
+    res.json(requests);
+  });
+});
+
+// Approve deposit request (admin)
+app.patch('/api/admin/deposit-requests/:id/approve', authenticateToken, requireAdmin, (req, res) => {
+  const depositId = parseInt(req.params.id);
+  const adminId = req.user.id;
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    db.get("SELECT * FROM deposit_requests WHERE id = ?", [depositId], (err, row) => {
+      if (err) {
+        db.run('ROLLBACK');
+        console.error('Error fetching deposit request:', err);
+        return res.status(500).json({ error: 'Failed to fetch deposit request' });
+      }
+
+      if (!row) {
+        db.run('ROLLBACK');
+        return res.status(404).json({ error: 'Deposit request not found' });
+      }
+
+      if (row.status !== 'waiting_confirmation' && row.status !== 'created') {
+        db.run('ROLLBACK');
+        return res.status(400).json({ error: 'Deposit request cannot be approved' });
+      }
+
+      // Update deposit request status
+      db.run("UPDATE deposit_requests SET status = 'approved', approvedAt = datetime('now'), adminId = ? WHERE id = ?", 
+        [adminId, depositId], (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            console.error('Error updating deposit request:', err);
+            return res.status(500).json({ error: 'Failed to update deposit request' });
+          }
+
+          // Call existing admin balance adjustment function
+          const balanceColumn = 'realBalance'; // Deposits go to real balance
+          const operation = 'add';
+          const amount = row.finalTotal; // Use final total including bonus
+
+          db.get(`SELECT ${balanceColumn} FROM users WHERE id = ?`, [row.userId], (err, userRow) => {
+            if (err) {
+              db.run('ROLLBACK');
+              console.error('Error fetching user balance:', err);
+              return res.status(500).json({ error: 'Failed to fetch user balance' });
+            }
+
+            const oldBalance = parseFloat(userRow[balanceColumn] || 0);
+            const newBalance = oldBalance + parseFloat(amount);
+
+            // Update user balance
+            db.run(`UPDATE users SET ${balanceColumn} = ? WHERE id = ?`, [newBalance, row.userId], (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                console.error('Error updating user balance:', err);
+                return res.status(500).json({ error: 'Failed to update user balance' });
+              }
+
+              // Insert audit log
+              db.run(`INSERT INTO admin_balance_adjustments 
+                (adminId, userId, accountType, operation, amount, oldBalance, newBalance, reason) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, 
+                [adminId, row.userId, 'real', operation, amount, oldBalance, newBalance, `Deposit approval - Request #${depositId}`], 
+                (err) => {
+                  if (err) {
+                    db.run('ROLLBACK');
+                    console.error('Error inserting audit log:', err);
+                    return res.status(500).json({ error: 'Failed to log adjustment' });
+                  }
+
+                  // Commit transaction
+                  db.run('COMMIT', (err) => {
+                    if (err) {
+                      console.error('Error committing transaction:', err);
+                      return res.status(500).json({ error: 'Failed to approve deposit' });
+                    }
+
+                    console.log(`💰 Admin ${adminId} approved deposit ${depositId} for user ${row.userId}: $${amount}`);
+
+                    // Emit socket events
+                    io.to(`user:${row.userId}`).emit('user:deposit:approved', {
+                      id: depositId,
+                      amount: parseFloat(row.amount).toFixed(2),
+                      bonusAmount: parseFloat(row.bonusAmount).toFixed(2),
+                      finalTotal: parseFloat(row.finalTotal).toFixed(2),
+                      newBalance: parseFloat(newBalance).toFixed(2)
+                    });
+
+                    io.emit('balance:update', {
+                      accountType: 'real',
+                      newBalance: parseFloat(newBalance).toFixed(2)
+                    });
+
+                    res.json({
+                      success: true,
+                      message: 'Deposit approved successfully',
+                      depositId: depositId,
+                      userId: row.userId,
+                      amount: parseFloat(amount).toFixed(2),
+                      newBalance: parseFloat(newBalance).toFixed(2)
+                    });
+                  });
+                });
+            });
+          });
+        });
+    });
+  });
+});
+
+// Reject deposit request (admin)
+app.patch('/api/admin/deposit-requests/:id/reject', authenticateToken, requireAdmin, (req, res) => {
+  const depositId = parseInt(req.params.id);
+  const adminId = req.user.id;
+  const { adminNote } = req.body;
+
+  db.get("SELECT * FROM deposit_requests WHERE id = ?", [depositId], (err, row) => {
+    if (err) {
+      console.error('Error fetching deposit request:', err);
+      return res.status(500).json({ error: 'Failed to fetch deposit request' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Deposit request not found' });
+    }
+
+    if (row.status !== 'waiting_confirmation' && row.status !== 'created') {
+      return res.status(400).json({ error: 'Deposit request cannot be rejected' });
+    }
+
+    db.run("UPDATE deposit_requests SET status = 'rejected', adminId = ?, adminNote = ? WHERE id = ?", 
+      [adminId, adminNote || null, depositId], (err) => {
+        if (err) {
+          console.error('Error updating deposit request:', err);
+          return res.status(500).json({ error: 'Failed to update deposit request' });
+        }
+
+        console.log(`❌ Admin ${adminId} rejected deposit ${depositId} for user ${row.userId}`);
+
+        // Emit socket event to user
+        io.to(`user:${row.userId}`).emit('user:deposit:rejected', {
+          id: depositId,
+          amount: parseFloat(row.amount).toFixed(2),
+          adminNote: adminNote || 'No reason provided'
+        });
+
+        res.json({
+          success: true,
+          message: 'Deposit rejected successfully',
+          depositId: depositId
+        });
+      });
+  });
+});
+
+// ===== WITHDRAWAL ENDPOINTS =====
+
+// Create withdrawal request
+app.post('/api/user/withdrawal-request', authenticateToken, (req, res) => {
+  const { amount, paymentMethod, purse, network } = req.body;
+  const userId = req.user.id;
+
+  // Validation
+  if (!amount || isNaN(amount) || amount < 10 || amount > 50000) {
+    return res.status(400).json({ error: 'Amount must be between $10 and $50,000' });
+  }
+
+  if (!paymentMethod) {
+    return res.status(400).json({ error: 'Payment method is required' });
+  }
+
+  if (!purse || purse.trim().length === 0) {
+    return res.status(400).json({ error: 'Wallet address is required' });
+  }
+
+  if (!network) {
+    return res.status(400).json({ error: 'Network is required' });
+  }
+
+  // Validate amount has max 2 decimal places
+  if (amount.toString().includes('.') && amount.toString().split('.')[1].length > 2) {
+    return res.status(400).json({ error: 'Amount can have maximum 2 decimal places' });
+  }
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    // Check user balance
+    db.get("SELECT realBalance FROM users WHERE id = ?", [userId], (err, user) => {
+      if (err) {
+        db.run('ROLLBACK');
+        console.error('Error checking user balance:', err);
+        return res.status(500).json({ error: 'Failed to check user balance' });
+      }
+
+      if (!user) {
+        db.run('ROLLBACK');
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      if (parseFloat(user.realBalance) < parseFloat(amount)) {
+        db.run('ROLLBACK');
+        return res.status(400).json({ error: 'Insufficient balance for withdrawal' });
+      }
+
+      // Create withdrawal request
+      db.run(`INSERT INTO withdrawal_requests (
+        userId, amount, paymentMethod, purse, network, status
+      ) VALUES (?, ?, ?, ?, ?, 'created')`, 
+      [userId, amount, paymentMethod, purse.trim(), network], 
+      function(err) {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error('Error creating withdrawal request:', err);
+          return res.status(500).json({ error: 'Failed to create withdrawal request' });
+        }
+
+        const withdrawalId = this.lastID;
+
+        // Deduct amount from user balance
+        db.run("UPDATE users SET realBalance = realBalance - ? WHERE id = ?", 
+          [amount, userId], (err) => {
+            if (err) {
+              db.run('ROLLBACK');
+              console.error('Error updating user balance:', err);
+              return res.status(500).json({ error: 'Failed to update user balance' });
+            }
+
+            // Commit transaction
+            db.run('COMMIT', (err) => {
+              if (err) {
+                console.error('Error committing transaction:', err);
+                return res.status(500).json({ error: 'Failed to create withdrawal request' });
+              }
+
+              console.log(`💸 Created withdrawal request ${withdrawalId} for user ${userId}: $${amount} via ${paymentMethod} (${network})`);
+
+              // Emit socket event to admins
+              io.emit('admin:withdrawal:created', {
+                id: withdrawalId,
+                userId: userId,
+                amount: parseFloat(amount).toFixed(2),
+                paymentMethod: paymentMethod,
+                network: network,
+                purse: purse.trim(),
+                createdAt: new Date().toISOString()
+              });
+
+              res.json({
+                id: withdrawalId,
+                status: 'created',
+                amount: parseFloat(amount).toFixed(2),
+                paymentMethod: paymentMethod,
+                network: network,
+                purse: purse.trim(),
+                message: 'Withdrawal request created successfully'
+              });
+            });
+          });
+      });
+    });
+  });
+});
+
+// Get user's withdrawal requests
+app.get('/api/user/withdrawal-requests', authenticateToken, (req, res) => {
+  const userId = req.user.id;
+  const { status } = req.query;
+
+  let query = "SELECT * FROM withdrawal_requests WHERE userId = ?";
+  let params = [userId];
+
+  if (status) {
+    query += " AND status = ?";
+    params.push(status);
+  }
+
+  query += " ORDER BY createdAt DESC LIMIT 50";
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching withdrawal requests:', err);
+      return res.status(500).json({ error: 'Failed to fetch withdrawal requests' });
+    }
+
+    res.json(rows.map(row => ({
+      id: row.id,
+      amount: parseFloat(row.amount).toFixed(2),
+      paymentMethod: row.paymentMethod,
+      network: row.network,
+      purse: row.purse,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      approvedAt: row.approvedAt,
+      processedAt: row.processedAt,
+      transactionHash: row.transactionHash,
+      adminNote: row.adminNote
+    })));
+  });
+});
+
+// Get specific withdrawal request
+app.get('/api/user/withdrawal-request/:id', authenticateToken, (req, res) => {
+  const withdrawalId = parseInt(req.params.id);
+  const userId = req.user.id;
+
+  db.get("SELECT * FROM withdrawal_requests WHERE id = ? AND userId = ?", 
+    [withdrawalId, userId], (err, row) => {
+      if (err) {
+        console.error('Error fetching withdrawal request:', err);
+        return res.status(500).json({ error: 'Failed to fetch withdrawal request' });
+      }
+
+      if (!row) {
+        return res.status(404).json({ error: 'Withdrawal request not found' });
+      }
+
+      res.json({
+        id: row.id,
+        amount: parseFloat(row.amount).toFixed(2),
+        paymentMethod: row.paymentMethod,
+        network: row.network,
+        purse: row.purse,
+        status: row.status,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        approvedAt: row.approvedAt,
+        processedAt: row.processedAt,
+        transactionHash: row.transactionHash,
+        adminNote: row.adminNote
+      });
+    });
+});
+
+// Admin: Get all withdrawal requests
+app.get('/api/admin/withdrawal-requests', authenticateToken, requireAdmin, (req, res) => {
+  const { status } = req.query;
+  const adminId = req.user.id;
+
+  let query = `
+    SELECT wr.*, u.username 
+    FROM withdrawal_requests wr 
+    JOIN users u ON wr.userId = u.id
+  `;
+  let params = [];
+
+  if (status) {
+    query += " WHERE wr.status = ?";
+    params.push(status);
+  }
+
+  query += " ORDER BY wr.createdAt DESC";
+
+  db.all(query, params, (err, rows) => {
+    if (err) {
+      console.error('Error fetching withdrawal requests:', err);
+      return res.status(500).json({ error: 'Failed to fetch withdrawal requests' });
+    }
+
+    res.json(rows.map(row => ({
+      id: row.id,
+      userId: row.userId,
+      username: row.username,
+      amount: parseFloat(row.amount).toFixed(2),
+      paymentMethod: row.paymentMethod,
+      network: row.network,
+      purse: row.purse,
+      status: row.status,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      approvedAt: row.approvedAt,
+      processedAt: row.processedAt,
+      transactionHash: row.transactionHash,
+      adminNote: row.adminNote
+    })));
+  });
+});
+
+// Admin: Approve withdrawal request
+app.patch('/api/admin/withdrawal-requests/:id/approve', authenticateToken, requireAdmin, (req, res) => {
+  const withdrawalId = parseInt(req.params.id);
+  const adminId = req.user.id;
+  const { adminNote } = req.body;
+
+  db.get("SELECT * FROM withdrawal_requests WHERE id = ?", [withdrawalId], (err, row) => {
+    if (err) {
+      console.error('Error fetching withdrawal request:', err);
+      return res.status(500).json({ error: 'Failed to fetch withdrawal request' });
+    }
+
+    if (!row) {
+      return res.status(404).json({ error: 'Withdrawal request not found' });
+    }
+
+    if (row.status !== 'created') {
+      return res.status(400).json({ error: 'Withdrawal request cannot be approved' });
+    }
+
+    db.run("UPDATE withdrawal_requests SET status = 'approved', adminId = ?, adminNote = ?, approvedAt = datetime('now') WHERE id = ?", 
+      [adminId, adminNote || null, withdrawalId], (err) => {
+        if (err) {
+          console.error('Error updating withdrawal request:', err);
+          return res.status(500).json({ error: 'Failed to update withdrawal request' });
+        }
+
+        console.log(`✅ Admin ${adminId} approved withdrawal ${withdrawalId} for user ${row.userId}`);
+
+        // Emit socket event to user
+        io.to(`user:${row.userId}`).emit('user:withdrawal:approved', {
+          id: withdrawalId,
+          amount: parseFloat(row.amount).toFixed(2),
+          paymentMethod: row.paymentMethod,
+          network: row.network,
+          adminNote: adminNote || 'Approved by admin'
+        });
+
+        res.json({
+          success: true,
+          message: 'Withdrawal approved successfully',
+          withdrawalId: withdrawalId
+        });
+      });
+  });
+});
+
+// Admin: Reject withdrawal request
+app.patch('/api/admin/withdrawal-requests/:id/reject', authenticateToken, requireAdmin, (req, res) => {
+  const withdrawalId = parseInt(req.params.id);
+  const adminId = req.user.id;
+  const { adminNote, reason } = req.body;
+
+  db.serialize(() => {
+    db.run('BEGIN TRANSACTION');
+
+    db.get("SELECT * FROM withdrawal_requests WHERE id = ?", [withdrawalId], (err, row) => {
+      if (err) {
+        db.run('ROLLBACK');
+        console.error('Error fetching withdrawal request:', err);
+        return res.status(500).json({ error: 'Failed to fetch withdrawal request' });
+      }
+
+      if (!row) {
+        db.run('ROLLBACK');
+        return res.status(404).json({ error: 'Withdrawal request not found' });
+      }
+
+      if (row.status !== 'created') {
+        db.run('ROLLBACK');
+        return res.status(400).json({ error: 'Withdrawal request cannot be rejected' });
+      }
+
+      // Update withdrawal status to rejected
+      db.run("UPDATE withdrawal_requests SET status = 'rejected', adminId = ?, adminNote = ? WHERE id = ?", 
+        [adminId, adminNote || reason || null, withdrawalId], (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            console.error('Error updating withdrawal request:', err);
+            return res.status(500).json({ error: 'Failed to update withdrawal request' });
+          }
+
+          // Refund the amount back to user's balance
+          db.run("UPDATE users SET realBalance = realBalance + ? WHERE id = ?", 
+            [row.amount, row.userId], (err) => {
+              if (err) {
+                db.run('ROLLBACK');
+                console.error('Error refunding user balance:', err);
+                return res.status(500).json({ error: 'Failed to refund user balance' });
+              }
+
+              // Commit transaction
+              db.run('COMMIT', (err) => {
+                if (err) {
+                  console.error('Error committing transaction:', err);
+                  return res.status(500).json({ error: 'Failed to reject withdrawal request' });
+                }
+
+                console.log(`❌ Admin ${adminId} rejected withdrawal ${withdrawalId} for user ${row.userId} and refunded $${row.amount}`);
+
+                // Emit socket event to user
+                io.to(`user:${row.userId}`).emit('user:withdrawal:rejected', {
+                  id: withdrawalId,
+                  amount: parseFloat(row.amount).toFixed(2),
+                  adminNote: adminNote || reason || 'Rejected by admin',
+                  refunded: true
+                });
+
+                res.json({
+                  success: true,
+                  message: 'Withdrawal rejected and amount refunded',
+                  withdrawalId: withdrawalId
+                });
+              });
+            });
+        });
     });
   });
 });
