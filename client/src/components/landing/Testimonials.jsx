@@ -5,19 +5,19 @@ const Testimonials = () => {
     {
       name: 'Sarah Johnson',
       role: 'Day Trader',
-      avatar: '👩‍💼',
+      avatar: '/assets/landing/love.webp',
       quote: 'The instant payouts are incredible. I\'ve never experienced such fast execution before.'
     },
     {
       name: 'Mike Chen',
       role: 'Retail Investor',
-      avatar: '👨‍💻',
+      avatar: '/assets/landing/books.webp',
       quote: 'Perfect for beginners. The demo account helped me learn without risking real money.'
     },
     {
       name: 'Emma Davis',
       role: 'Professional Trader',
-      avatar: '👩‍🎓',
+      avatar: '/assets/landing/finish.webp',
       quote: 'The mobile app is fantastic. I can trade anywhere, anytime with full functionality.'
     }
   ];
@@ -41,7 +41,7 @@ const Testimonials = () => {
               </div>
               <div className="testimonial-author">
                 <div className="author-avatar">
-                  <span className="avatar">{testimonial.avatar}</span>
+                  <img src={testimonial.avatar} alt={testimonial.name} className="avatar" />
                 </div>
                 <div className="author-info">
                   <div className="author-name">{testimonial.name}</div>

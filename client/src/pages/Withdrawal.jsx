@@ -244,6 +244,23 @@ const Withdrawal = () => {
       }}>
         {/* Header */}
         <div style={{ marginBottom: '30px' }}>
+          {/* ORLIX Logo */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            marginBottom: '20px'
+          }}>
+            <img 
+              src="/assets/landing/logo.svg" 
+              alt="ORLIX" 
+              style={{
+                height: '40px',
+                width: 'auto',
+                marginRight: '20px'
+              }}
+            />
+          </div>
+          
           <Link
             to="/"
             style={{

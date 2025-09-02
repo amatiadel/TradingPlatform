@@ -115,15 +115,24 @@ const TimezoneSelector = ({ onTimezoneChange }) => {
           style={{
             width: '100%',
             padding: '4px 8px',
-            background: '#2a2a2a',
-            border: '1px solid #444',
-            borderRadius: '4px',
+            background: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.2)',
+            borderRadius: '18px',
             color: '#ffffff',
             fontSize: '12px',
             cursor: 'pointer',
             display: 'flex',
             justifyContent: 'space-between',
-            alignItems: 'center'
+            alignItems: 'center',
+            transition: 'all 0.3s ease'
+          }}
+          onMouseOver={(e) => {
+            e.target.style.background = 'rgba(255, 255, 255, 0.1)';
+            e.target.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+          }}
+          onMouseOut={(e) => {
+            e.target.style.background = 'transparent';
+            e.target.style.borderColor = 'rgba(255, 255, 255, 0.2)';
           }}
           onBlur={() => {
             // Delay closing to allow clicking on options
@@ -148,13 +157,14 @@ const TimezoneSelector = ({ onTimezoneChange }) => {
               top: '100%',
               left: 0,
               right: 0,
-              background: '#2a2a2a',
-              border: '1px solid #444',
-              borderRadius: '4px',
+              background: 'rgba(26, 26, 26, 0.95)',
+              border: '1px solid rgba(255, 255, 255, 0.2)',
+              borderRadius: '18px',
               maxHeight: '200px',
               overflowY: 'auto',
               zIndex: 1000,
-              marginTop: '2px'
+              marginTop: '2px',
+              backdropFilter: 'blur(10px)'
             }}
           >
             {timezoneOptions.map((option) => (
@@ -168,13 +178,14 @@ const TimezoneSelector = ({ onTimezoneChange }) => {
                   cursor: 'pointer',
                   color: '#ffffff',
                   fontSize: '12px',
-                  borderBottom: '1px solid #444',
-                  backgroundColor: option.value === selectedTimezone ? '#444' : 'transparent',
-                  transition: 'background-color 0.2s ease'
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                  backgroundColor: option.value === selectedTimezone ? 'rgba(255, 255, 255, 0.2)' : 'transparent',
+                  transition: 'all 0.3s ease',
+                  borderRadius: option.value === selectedTimezone ? '12px' : '0'
                 }}
                 onMouseEnter={(e) => {
                   if (option.value !== selectedTimezone) {
-                    e.target.style.backgroundColor = '#3a3a3a';
+                    e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
                   }
                 }}
                 onMouseLeave={(e) => {

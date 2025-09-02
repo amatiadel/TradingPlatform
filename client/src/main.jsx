@@ -8,6 +8,7 @@ import Login from './Login'
 import Signup from './Signup'
 import ProtectedRoute from './ProtectedRoute'
 import Landing from './pages/Landing'
+
 import Deposit from './pages/Deposit'
 import DepositConfirm from './pages/DepositConfirm'
 import Withdrawal from './pages/Withdrawal'
@@ -74,6 +75,7 @@ const AuthWrapper = () => {
           <App />
         </ProtectedRoute>
       } />
+      
       <Route path="/deposit" element={
         <ProtectedRoute>
           <Deposit />

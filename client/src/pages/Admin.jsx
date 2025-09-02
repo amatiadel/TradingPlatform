@@ -264,6 +264,16 @@ export default function Admin() {
             alignItems: "center",
             gap: "15px"
           }}>
+            {/* ORLIX Logo */}
+            <img 
+              src="/assets/landing/logo.svg" 
+              alt="ORLIX" 
+              style={{
+                height: "40px",
+                width: "auto",
+                marginRight: "15px"
+              }}
+            />
             <span style={{ fontSize: "32px" }}>⚙️</span>
             <div>
               <h1 style={{ margin: 0, fontSize: "28px", fontWeight: "bold" }}>

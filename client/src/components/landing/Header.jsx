@@ -21,7 +21,7 @@ const Header = ({ onCreateAccount, onSignIn }) => {
         <div className="logo">
           <img 
             src="/assets/landing/logo.svg" 
-            alt="Binary Options Demo" 
+            alt="ORLIX" 
             className="logo-img"
             onError={(e) => {
               e.target.style.display = 'none';
@@ -29,7 +29,7 @@ const Header = ({ onCreateAccount, onSignIn }) => {
             }}
           />
           <div className="logo-text" style={{ display: 'none' }}>
-            Binary Options Demo
+            ORLIX
           </div>
         </div>
 

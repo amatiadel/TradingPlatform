@@ -3,32 +3,32 @@ import React from 'react';
 const Features = () => {
   const features = [
     {
-      icon: '⚡',
+      icon: '/assets/landing/fire.webp',
       title: 'Instant Execution',
       description: 'Execute trades instantly with our high-speed platform. No delays, no waiting.'
     },
     {
-      icon: '💰',
+      icon: '/assets/landing/money.webp',
       title: 'Real-time Payouts',
       description: 'Get your winnings instantly. No waiting periods or complex withdrawal processes.'
     },
     {
-      icon: '🎯',
+      icon: '/assets/landing/books.webp',
       title: 'Demo & Real Accounts',
       description: 'Practice risk-free with demo accounts, then switch to real trading when ready.'
     },
     {
-      icon: '🔒',
+      icon: '/assets/landing/shield.webp',
       title: 'Secure Balances',
       description: 'Your funds are protected with bank-level security and encryption.'
     },
     {
-      icon: '📱',
+      icon: '/assets/landing/finish.webp',
       title: 'Mobile Ready',
       description: 'Trade anywhere, anytime with our fully responsive mobile platform.'
     },
     {
-      icon: '📊',
+      icon: '/assets/landing/love.webp',
       title: 'Advanced Charts',
       description: 'Professional-grade charts with real-time data and technical indicators.'
     }
@@ -48,7 +48,7 @@ const Features = () => {
           {features.map((feature, index) => (
             <div key={index} className="feature-card">
               <div className="feature-icon">
-                <span className="icon">{feature.icon}</span>
+                <img src={feature.icon} alt={feature.title} className="icon" />
               </div>
               <h3 className="feature-title">{feature.title}</h3>
               <p className="feature-description">{feature.description}</p>

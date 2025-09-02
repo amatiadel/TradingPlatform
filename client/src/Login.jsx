@@ -24,33 +24,73 @@ const Login = () => {
   return (
     <div style={{
       minHeight: '100vh',
-      background: '#0f0f0f',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
+      background: '#000000',
+      position: 'relative',
       fontFamily: 'Arial, sans-serif'
     }}>
+      {/* Background SVG */}
       <div style={{
-        background: '#1a1a1a',
-        border: '1px solid #2a2a2a',
-        borderRadius: '12px',
-        padding: '40px',
+        position: 'absolute',
+        top: 0,
+        left: 0,
         width: '100%',
-        maxWidth: '400px',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        height: '100%',
+        zIndex: 1
+      }}>
+        <img 
+          src="/assets/landing/bacground.svg" 
+          alt="Background" 
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            opacity: 0.3
+          }}
+        />
+      </div>
+
+      {/* Logo in top left */}
+      <div style={{
+        position: 'absolute',
+        top: '20px',
+        left: '20px',
+        zIndex: 10,
+        cursor: 'pointer'
+      }}>
+        <h1 
+          onClick={() => navigate('/')}
+          style={{ 
+            color: 'white', 
+            margin: 0,
+            fontSize: '42px',
+            fontWeight: '700',
+            cursor: 'pointer'
+          }}
+        >
+          ORLIX
+        </h1>
+      </div>
+
+      {/* Centered form content */}
+      <div style={{
+        position: 'relative',
+        zIndex: 5,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh',
+        padding: '20px'
       }}>
         <div style={{ textAlign: 'center', marginBottom: '30px' }}>
-          <h1 style={{ 
-            color: '#00ff88', 
+          <h2 style={{ 
+            color: 'white', 
             margin: '0 0 10px 0',
             fontSize: '28px',
             fontWeight: 'bold'
           }}>
-            Trading Platform
-          </h1>
-          <p style={{ color: '#666', margin: 0, fontSize: '14px' }}>
-            Sign in to your account
-          </p>
+            Log In
+          </h2>
         </div>
 
         {error && (
@@ -67,11 +107,11 @@ const Login = () => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} style={{ width: '100%', maxWidth: '400px' }}>
           <div style={{ marginBottom: '20px' }}>
             <label style={{
               display: 'block',
-              color: '#ccc',
+              color: 'white',
               marginBottom: '8px',
               fontSize: '14px',
               fontWeight: 'bold'
@@ -85,8 +125,8 @@ const Login = () => {
               style={{
                 width: '100%',
                 padding: '12px',
-                background: '#2a2a2a',
-                border: '1px solid #444',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '6px',
                 color: 'white',
                 fontSize: '16px',
@@ -100,7 +140,7 @@ const Login = () => {
           <div style={{ marginBottom: '30px' }}>
             <label style={{
               display: 'block',
-              color: '#ccc',
+              color: 'white',
               marginBottom: '8px',
               fontSize: '14px',
               fontWeight: 'bold'
@@ -114,8 +154,8 @@ const Login = () => {
               style={{
                 width: '100%',
                 padding: '12px',
-                background: '#2a2a2a',
-                border: '1px solid #444',
+                background: 'rgba(255, 255, 255, 0.1)',
+                border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '6px',
                 color: 'white',
                 fontSize: '16px',
@@ -126,28 +166,28 @@ const Login = () => {
             />
           </div>
 
-          <button
-            type="submit"
-            disabled={isLoading}
-            style={{
-              width: '100%',
-              padding: '14px',
-              background: isLoading ? '#666' : '#00ff88',
-              border: 'none',
-              borderRadius: '6px',
-              color: isLoading ? '#999' : '#000',
-              fontSize: '16px',
-              fontWeight: 'bold',
-              cursor: isLoading ? 'not-allowed' : 'pointer',
-              marginBottom: '20px'
-            }}
-          >
-            {isLoading ? 'Signing In...' : 'Sign In'}
-          </button>
+                     <button
+             type="submit"
+             disabled={isLoading}
+             style={{
+               width: '100%',
+               padding: '14px',
+               background: isLoading ? '#666' : 'linear-gradient(135deg, #0066ff 0%, #00ff88 100%)',
+               border: 'none',
+               borderRadius: '6px',
+               color: isLoading ? '#999' : '#000',
+               fontSize: '16px',
+               fontWeight: 'bold',
+               cursor: isLoading ? 'not-allowed' : 'pointer',
+               marginBottom: '20px'
+             }}
+           >
+             {isLoading ? 'Signing In...' : 'Sign In'}
+           </button>
         </form>
 
-        <div style={{ textAlign: 'center' }}>
-          <p style={{ color: '#666', margin: '0 0 10px 0', fontSize: '14px' }}>
+        <div style={{ textAlign: 'center', width: '100%', maxWidth: '400px' }}>
+          <p style={{ color: 'white', margin: '0 0 10px 0', fontSize: '14px' }}>
             Don't have an account?
           </p>
           <button
@@ -163,38 +203,10 @@ const Login = () => {
           >
             Create an account
           </button>
-          <div style={{ marginTop: '20px', paddingTop: '20px', borderTop: '1px solid #2a2a2a' }}>
-            <button
-              onClick={() => navigate('/')}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: '#666',
-                fontSize: '12px',
-                cursor: 'pointer',
-                textDecoration: 'underline'
-              }}
-            >
-              ← Back to Home
-            </button>
-          </div>
+          
         </div>
 
-        <div style={{ 
-          marginTop: '30px', 
-          padding: '20px', 
-          background: '#2a2a2a', 
-          borderRadius: '6px',
-          textAlign: 'center'
-        }}>
-          <p style={{ color: '#666', margin: '0 0 10px 0', fontSize: '12px' }}>
-            Demo Account
-          </p>
-          <p style={{ color: '#ccc', margin: 0, fontSize: '12px' }}>
-            Username: <strong>admin</strong><br />
-            Password: <strong>admin123</strong>
-          </p>
-        </div>
+
       </div>
     </div>
   );

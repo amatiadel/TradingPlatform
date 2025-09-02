@@ -22,9 +22,9 @@ const FooterLanding = () => {
   };
 
   const socialLinks = [
-    { name: 'Twitter', icon: '🐦', href: 'https://twitter.com/binaryoptionsdemo' },
-    { name: 'LinkedIn', icon: '💼', href: 'https://linkedin.com/company/binaryoptionsdemo' },
-    { name: 'Telegram', icon: '📱', href: 'https://t.me/binaryoptionsdemo' }
+    { name: 'Twitter', icon: '🐦', href: 'https://twitter.com/orlix' },
+    { name: 'LinkedIn', icon: '💼', href: 'https://linkedin.com/company/orlix' },
+    { name: 'Telegram', icon: '📱', href: 'https://t.me/orlix' }
   ];
 
   return (
@@ -36,7 +36,7 @@ const FooterLanding = () => {
             <div className="footer-logo">
               <img
                 src="/assets/landing/logo.svg"
-                alt="Binary Options Demo"
+                alt="ORLIX"
                 className="footer-logo-img"
                 onError={(e) => {
                   e.target.style.display = 'none';
@@ -44,7 +44,7 @@ const FooterLanding = () => {
                 }}
               />
               <div className="footer-logo-text" style={{ display: 'none' }}>
-                Binary Options Demo
+                ORLIX
               </div>
             </div>
             <p className="footer-description">
@@ -107,7 +107,7 @@ const FooterLanding = () => {
         <div className="footer-bottom">
           <div className="footer-bottom-content">
             <p className="copyright">
-              © {currentYear} Binary Options Demo. All rights reserved.
+              © {currentYear} ORLIX. All rights reserved.
             </p>
             <div className="footer-bottom-links">
               <a href="#admin" className="footer-link">Admin</a>

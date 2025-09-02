@@ -4,19 +4,19 @@ const HowItWorks = () => {
   const steps = [
     {
       number: '1',
-      icon: '👤',
+      icon: '/assets/landing/finish.webp',
       title: 'Create Account',
       description: 'Sign up in seconds with just your email. No complex verification required.'
     },
     {
       number: '2',
-      icon: '📈',
+      icon: '/assets/landing/books.webp',
       title: 'Choose Pair & Stake',
       description: 'Select your preferred currency pair and set your investment amount.'
     },
     {
       number: '3',
-      icon: '💰',
+      icon: '/assets/landing/money.webp',
       title: 'Close & Payout',
       description: 'Watch the market and close your position. Get instant payouts on wins.'
     }
@@ -37,7 +37,7 @@ const HowItWorks = () => {
             <div key={index} className="step-item">
               <div className="step-number">{step.number}</div>
               <div className="step-icon">
-                <span className="icon">{step.icon}</span>
+                <img src={step.icon} alt={step.title} className="icon" />
               </div>
               <h3 className="step-title">{step.title}</h3>
               <p className="step-description">{step.description}</p>

@@ -39,6 +39,643 @@ import { formatInOffset, DEFAULT_TIMEZONE_OFFSET, TIMEZONE_STORAGE_KEY } from ".
 // Removed TradeLineOverlay component - using simple price lines + corner labels instead
 
 export default function App() {
+  // Responsive layout state
+  const [isMobile, setIsMobile] = useState(false);
+  const [activeTab, setActiveTab] = useState('chart'); // chart, panel, sidebar
+
+  // Responsive layout detection
+  useEffect(() => {
+    const checkScreenSize = () => {
+      const width = window.innerWidth;
+      const mobile = width <= 1024;
+      console.log('Screen width:', width, 'isMobile:', mobile);
+      setIsMobile(mobile);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+    
+    // Add orientation change listener for mobile devices
+    window.addEventListener('orientationchange', () => {
+      // Delay to allow orientation change to complete
+      setTimeout(checkScreenSize, 100);
+    });
+    
+    // Add visual viewport change listener for mobile browsers
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', checkScreenSize);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', checkScreenSize);
+      window.removeEventListener('orientationchange', checkScreenSize);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', checkScreenSize);
+      }
+    };
+  }, []);
+
+  // Removed complex mobile chart styling effects - using default Lightweight Charts behavior
+
+  // Effect to manage body class for mobile trading controls
+  useEffect(() => {
+    if (isMobile) {
+      // Add body class to prevent scrolling issues
+      document.body.classList.add('mobile-trading-active');
+      
+      return () => {
+        // Remove body class when component unmounts or mobile state changes
+        document.body.classList.remove('mobile-trading-active');
+      };
+    }
+  }, [isMobile]);
+
+  // CSS to hide chart branding elements and fix mobile layout
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .tv-lightweight-charts canvas {
+        /* Hide any canvas-based branding */
+      }
+      .tv-lightweight-charts svg {
+        /* Hide SVG branding elements */
+      }
+      .tv-lightweight-charts [data-role="logo"],
+      .tv-lightweight-charts [data-role="branding"],
+      .tv-lightweight-charts [data-role="watermark"] {
+        display: none !important;
+      }
+      /* Hide any elements with specific branding classes or IDs */
+      .tv-lightweight-charts .branding,
+      .tv-lightweight-charts .logo,
+      .tv-lightweight-charts .watermark {
+        display: none !important;
+      }
+      /* More aggressive hiding of branding elements */
+      .tv-lightweight-charts *[class*="logo"],
+      .tv-lightweight-charts *[class*="branding"],
+      .tv-lightweight-charts *[class*="watermark"],
+      .tv-lightweight-charts *[id*="logo"],
+      .tv-lightweight-charts *[id*="branding"],
+      .tv-lightweight-charts *[id*="watermark"] {
+        display: none !important;
+      }
+      /* Hide any SVG elements that might contain branding */
+      .tv-lightweight-charts svg[data-role="logo"],
+      .tv-lightweight-charts svg[data-role="branding"],
+      .tv-lightweight-charts svg[data-role="watermark"] {
+        display: none !important;
+      }
+      
+      /* Mobile trade page animations */
+      @keyframes slideInFromBottom {
+        0% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+        100% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes slideOutToBottom {
+        0% {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        100% {
+          transform: translateY(100%);
+          opacity: 0;
+        }
+      }
+      
+                      /* Mobile chart axis styling */
+        @media (max-width: 1024px) {
+          /* Chart area mobile sizing */
+          .chart-area-mobile {
+            height: calc(100vh - 280px) !important;
+            height: calc(100dvh - 280px) !important;
+            min-height: 400px !important;
+            max-height: none !important;
+          }
+          
+          /* Small mobile devices */
+          @media (max-height: 700px) {
+            .chart-container-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 350px !important;
+              max-height: none !important;
+            }
+            
+            .chart-area-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 350px !important;
+              max-height: none !important;
+            }
+          }
+          
+          /* Medium mobile devices */
+          @media (min-height: 701px) and (max-height: 900px) {
+            .chart-container-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 400px !important;
+              max-height: none !important;
+            }
+            
+            .chart-area-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 400px !important;
+              max-height: none !important;
+            }
+          }
+          
+          /* Large mobile devices */
+          @media (min-height: 901px) {
+            .chart-container-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 450px !important;
+              max-height: none !important;
+            }
+            
+            .chart-area-mobile {
+              height: calc(100vh - 280px) !important;
+              height: calc(100dvh - 280px) !important;
+              min-height: 450px !important;
+              max-height: none !important;
+            }
+          }
+        /* Symbol selector dropdown options styling - make them dark like platform */
+        .mobile-symbol-select option {
+          background: #1a1a1a !important;
+          color: white !important;
+          font-size: 16px !important;
+          padding: 8px !important;
+        }
+        
+        .mobile-timeframe-select option {
+          background: #1a1a1a !important;
+          color: white !important;
+          font-size: 16px !important;
+          padding: 8px !important;
+        }
+        .tv-lightweight-charts .tv-price-axis__label,
+        .tv-lightweight-charts .tv-time-axis__label {
+          font-size: 16px !important; /* Consistent size for all text */
+          font-weight: bold !important;
+        }
+        
+        /* Additional targeting for any chart text elements */
+        .tv-lightweight-charts text {
+          font-size: 16px !important;
+          font-weight: bold !important;
+        }
+        
+        /* Fix for mobile viewport height issues */
+        html, body {
+          height: 100%;
+          overflow: hidden;
+        }
+        
+        #root {
+          height: 100vh;
+          height: 100dvh; /* Dynamic viewport height for mobile */
+          height: -webkit-fill-available;
+        }
+        
+        /* Ensure mobile trading controls stay visible */
+        .mobile-trading-controls {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 1000 !important;
+          background: #1a1a1a !important;
+          border-top: 2px solid #2a2a2a !important;
+          min-height: 280px !important;
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.5) !important;
+        }
+        
+        /* Prevent body scroll on mobile when trading controls are visible */
+        body.mobile-trading-active {
+          overflow: hidden !important;
+          position: fixed !important;
+          width: 100% !important;
+        }
+        
+        /* Ensure chart container maintains proper dimensions */
+        .chart-container-mobile {
+          /* Full page height minus trading controls */
+          height: calc(100vh - 280px) !important;
+          height: calc(100dvh - 280px) !important;
+          min-height: 400px !important;
+          max-height: none !important;
+        }
+        
+        /* Chart container dimensions */
+        .chart-container-mobile > div {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: inherit !important;
+        }
+        
+        /* Chart ref div dimensions */
+        .chart-container-mobile div[ref] {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: inherit !important;
+        }
+        
+        /* Force chart ref div to expand */
+        .chart-container-mobile > div:last-child {
+          flex: 1 !important;
+          height: 100% !important;
+          min-height: 100% !important;
+        }
+        
+        /* Force chart to fill container */
+        .chart-container-mobile canvas {
+          width: 100% !important;
+          height: 100% !important;
+          display: block !important;
+        }
+        
+        /* Force chart content to expand */
+        .chart-container-mobile .tv-lightweight-charts {
+          height: 100% !important;
+          min-height: 100% !important;
+        }
+        
+        /* Ensure chart series fills container */
+        .chart-container-mobile svg {
+          height: 100% !important;
+          min-height: 100% !important;
+        }
+        
+        /* Ensure chart area has full page dimensions */
+        .chart-area-mobile {
+          height: calc(100vh - 280px) !important;
+          height: calc(100dvh - 280px) !important;
+          overflow: hidden !important;
+        }
+        
+        /* Force chart to expand and fill space */
+        .chart-area-mobile .tv-lightweight-charts {
+          height: 100% !important;
+          min-height: 100% !important;
+        }
+        
+        /* Ensure chart container expands */
+        .chart-container-mobile {
+          display: flex !important;
+          flex-direction: column !important;
+          justify-content: stretch !important;
+          align-items: stretch !important;
+        }
+        
+        /* Allow chart interaction through countdowns */
+        .chart-container-mobile .trade-countdown-labels {
+          pointer-events: none !important;
+        }
+        
+        .chart-container-mobile .trade-countdown-labels > div {
+          pointer-events: none !important;
+        }
+        
+        /* Hide loading indicators on mobile */
+        @media (max-width: 1024px) {
+          /* Hide loading indicator on mobile */
+          .loading-indicator {
+            display: none !important;
+          }
+          
+          /* Hide historical data loading indicator on mobile */
+          .historical-loading-indicator {
+            display: none !important;
+          }
+        }
+        
+        /* Mobile-specific: Make text and symbols 2 times bigger */
+        /* Account switcher text and symbols */
+        .account-selector .account-switcher {
+          font-size: 24px !important;
+        }
+        
+        .account-selector .account-switcher button {
+          font-size: 24px !important;
+        }
+        
+        .account-selector .account-switcher span {
+          font-size: 24px !important;
+        }
+        
+        /* Mobile header symbol and timeframe selectors */
+        .mobile-symbol-selector select,
+        .mobile-timeframe-selector select {
+          font-size: 40px !important;
+        }
+        
+        /* Mobile account switcher text */
+        .account-selector > div > div > span:first-child {
+          font-size: 44px !important;
+        }
+        
+        .account-selector > div > div > span:last-child {
+          font-size: 32px !important;
+        }
+        
+        /* Timeframe and time selector */
+        .mobile-trading-controls select,
+        .mobile-trading-controls input[type="text"] {
+          font-size: 36px !important;
+        }
+        
+        /* Investment input */
+        .mobile-trading-controls input[type="number"] {
+          font-size: 36px !important;
+        }
+        
+        /* Your payout text */
+        .mobile-trading-controls .payout-display {
+          font-size: 32px !important;
+        }
+        
+        /* Up and down buttons */
+        .mobile-trading-controls button[onclick*="place"] {
+          font-size: 40px !important;
+        }
+        
+        .mobile-trading-controls button[onclick*="place"] span {
+          font-size: 48px !important;
+        }
+        
+        /* Chart and trades navigation buttons */
+        .mobile-trading-controls button[onclick*="setActiveTab"] {
+          font-size: 32px !important;
+        }
+        
+        /* Mobile header elements */
+        .mobile-trading-controls .time-investment-row input,
+        .mobile-trading-controls .time-investment-row select {
+          font-size: 36px !important;
+        }
+        
+        /* Mobile trading controls overall text */
+        .mobile-trading-controls * {
+          font-size: 32px !important;
+        }
+        
+        /* Specific overrides for better readability */
+        .mobile-trading-controls input,
+        .mobile-trading-controls select,
+        .mobile-trading-controls button {
+          font-size: 32px !important;
+        }
+        
+        .mobile-trading-controls .payout-display {
+          font-size: 32px !important;
+        }
+        
+        .mobile-trading-controls .trade-buttons button {
+          font-size: 40px !important;
+        }
+        
+        .mobile-trading-controls .trade-buttons button span:first-child {
+          font-size: 48px !important;
+        }
+        
+        .mobile-trading-controls .trade-buttons button span:last-child {
+          font-size: 36px !important;
+        }
+        
+        /* Chart and Trades navigation buttons */
+        .mobile-trading-controls button[onclick*="setActiveTab"] {
+          font-size: 32px !important;
+        }
+        
+        .mobile-trading-controls button[onclick*="showMobileTradePage"] {
+          font-size: 32px !important;
+        }
+        
+        /* Chart area text - make bigger for mobile */
+        .chart-container-mobile text,
+        .chart-container-mobile .tv-lightweight-charts text {
+          font-size: 32px !important;
+        }
+        
+        /* Chart axis labels */
+        .chart-container-mobile .tv-lightweight-charts .tv-price-axis__label,
+        .chart-container-mobile .tv-lightweight-charts .tv-time-axis__label {
+          font-size: 32px !important;
+        }
+        
+        /* Trades section text - make bigger for mobile */
+        .mobile-trading-controls .trades-section,
+        .mobile-trading-controls .trades-section * {
+          font-size: 32px !important;
+        }
+        
+        /* Active trades display */
+        .mobile-trading-controls .active-trades,
+        .mobile-trading-controls .active-trades * {
+          font-size: 32px !important;
+        }
+        
+        /* History trades display */
+        .mobile-trading-controls .history-trades,
+        .mobile-trading-controls .history-trades * {
+          font-size: 32px !important;
+        }
+        
+        /* Mobile trade page text - make bigger */
+        .mobile-trade-page,
+        .mobile-trade-page * {
+          font-size: 32px !important;
+        }
+        
+        /* Mobile trade page navigation tabs */
+        .mobile-trade-page button {
+          font-size: 32px !important;
+        }
+        
+        /* Mobile trade page content */
+        .mobile-trade-page .trade-content,
+        .mobile-trade-page .trade-content * {
+          font-size: 32px !important;
+        }
+        
+        /* Account switcher dropdown text */
+        .account-switcher,
+        .account-switcher * {
+          font-size: 32px !important;
+        }
+        
+        .account-switcher button {
+          font-size: 32px !important;
+        }
+        
+        .account-switcher div {
+          font-size: 32px !important;
+        }
+        
+        /* Time picker popup text */
+        .time-picker-popup,
+        .time-picker-popup * {
+          font-size: 32px !important;
+        }
+        
+        .time-picker-popup button {
+          font-size: 32px !important;
+        }
+        
+        .time-picker-popup input {
+          font-size: 32px !important;
+        }
+        
+        /* Modal text - make bigger for mobile */
+        .modal-content,
+        .modal-content * {
+          font-size: 32px !important;
+        }
+        
+        .modal-content button {
+          font-size: 32px !important;
+        }
+        
+        .modal-content input {
+          font-size: 32px !important;
+        }
+        
+        .modal-content h2 {
+          font-size: 48px !important;
+        }
+        
+        /* Mobile trading controls positioning */
+        .mobile-trading-controls {
+          position: fixed !important;
+          bottom: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          z-index: 1000 !important;
+          background: #1a1a1a !important;
+          border-top: 2px solid #2a2a2a !important;
+          min-height: 280px !important;
+          box-shadow: 0 -4px 20px rgba(0,0,0,0.5) !important;
+        }
+        
+        /* Prevent body scroll on mobile when trading controls are visible */
+        body.mobile-trading-active {
+          overflow: hidden !important;
+          position: fixed !important;
+          width: 100% !important;
+        }
+        
+        /* Mobile Trades Page - Make ALL text 2 times bigger */
+        .mobile-trade-page h1 {
+          font-size: 32px !important; /* Was 16px */
+        }
+        
+        .mobile-trade-page .trade-content {
+          font-size: 32px !important;
+        }
+        
+        /* Navigation tabs */
+        .mobile-trade-page button[onclick*="setActiveTab"] {
+          font-size: 32px !important; /* Was 16px */
+        }
+        
+        /* Active trades content - 20% smaller for mobile */
+        .mobile-trade-page .trade-content .active-trades-tab * {
+          font-size: 26px !important; /* 20% smaller than 32px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .trade-symbol {
+          font-size: 26px !important; /* 20% smaller than 32px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .countdown {
+          font-size: 36px !important; /* Bigger countdown text for mobile */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .trade-amount {
+          font-size: 85px !important; /* 20% smaller than 106px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .trade-arrow {
+          font-size: 85px !important; /* 20% smaller than 106px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .payout-amount {
+          font-size: 77px !important; /* 20% smaller than 96px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .no-trades-icon {
+          font-size: 26px !important; /* 20% smaller than 32px */
+        }
+        
+        .mobile-trade-page .trade-content .active-trades-tab .no-trades-text {
+          font-size: 26px !important; /* 20% smaller than 32px */
+        }
+        
+        /* Trade history content */
+        .mobile-trade-page .trade-content .trade-history-tab * {
+          font-size: 22px !important; /* 30% smaller than 32px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .trade-symbol {
+          font-size: 67px !important; /* 30% smaller than 96px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .trade-result {
+          font-size: 67px !important; /* 30% smaller than 96px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .trade-amount {
+          font-size: 74px !important; /* 30% smaller than 106px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .trade-arrow {
+          font-size: 74px !important; /* 30% smaller than 106px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .payout-amount {
+          font-size: 67px !important; /* 30% smaller than 96px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .trade-details {
+          font-size: 52px !important; /* 30% smaller than 74px */
+        }
+        
+        .mobile-trade-page .trade-history-tab .no-history-icon {
+          font-size: 298px !important; /* 30% smaller than 426px */
+        }
+        
+        .mobile-trade-page .trade-content .trade-history-tab .no-history-text {
+          font-size: 67px !important; /* 30% smaller than 96px */
+        }
+        
+        /* View Full History button */
+        .mobile-trade-page .trade-content .view-full-history-btn {
+          font-size: 86px !important; /* Was 43px */
+        }
+        
+        /* Close button */
+        .mobile-trade-page .close-btn {
+          font-size: 32px !important; /* Was 16px */
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
   const chartRef = useRef(null);
   const chartInstanceRef = useRef(null);
   const candleSeriesRef = useRef(null);
@@ -51,6 +688,8 @@ export default function App() {
   const earliestLoadedTimeRef = useRef(null);
   const allCandlesRef = useRef([]);
   const scrollThrottleRef = useRef(null);
+  
+  // Removed custom price scale formatter - using default Lightweight Charts behavior
   
   // Authentication
   const { user, logout } = useAuth();
@@ -91,6 +730,10 @@ export default function App() {
   // NEW: Additional state for new features
   const [showFullHistoryModal, setShowFullHistoryModal] = useState(false);
   const [showTimePickerPopup, setShowTimePickerPopup] = useState(false);
+  
+  // NEW: Mobile trade page state
+  const [showMobileTradePage, setShowMobileTradePage] = useState(false);
+  const [isClosingTradePage, setIsClosingTradePage] = useState(false);
   
   // NEW: Deposit/Withdrawal modal states - REMOVED for placeholder implementation
   // const [showDepositModal, setShowDepositModal] = useState(false);
@@ -477,6 +1120,8 @@ export default function App() {
     }
   };
   
+  // Removed custom price scale formatter functions - using default Lightweight Charts behavior
+  
   // WebSocket cleanup function
   const closeWebSocket = (reason = "Switching connection") => {
     if (wsRef.current) {
@@ -754,7 +1399,7 @@ export default function App() {
         setShowTimePickerPopup(false);
       }
       // NEW: Handle account switcher
-      if (showAccountSwitcher && !event.target.closest('.account-switcher')) {
+      if (showAccountSwitcher && !event.target.closest('.account-switcher') && !event.target.closest('.account-selector')) {
         setShowAccountSwitcher(false);
       }
       // NEW: Handle modals (click outside to close)
@@ -934,7 +1579,7 @@ export default function App() {
       console.log("🛑 Cleaning up simplified timer");
       clearInterval(timer);
     };
-  }, [symbol, currentPrice, profitRates]);
+  }, []); // Empty dependency array - timer should run only once
 
   // Clear loading state after timeout
   useEffect(() => {
@@ -947,6 +1592,8 @@ export default function App() {
   // Chart setup effect (separate from WebSocket)
   useEffect(() => {
     if (!chartRef.current) return;
+
+    // Removed complex mobile initialization timing - using default behavior
 
     try {
       // Clean up previous chart
@@ -1003,15 +1650,79 @@ export default function App() {
         handleScroll: {
           mouseWheel: true,
           pressedMouseMove: true,
+          horzTouchDrag: true,
+          vertTouchDrag: true,
         },
         handleScale: {
           axisPressedMouseMove: true,
           mouseWheel: true,
           pinch: true,
         },
+        watermark: {
+          visible: false,
+        },
+        branding: {
+          visible: false,
+        },
+        logo: {
+          visible: false,
+        },
+        attribution: {
+          visible: false,
+        },
+        copyright: {
+          visible: false,
+        },
       });
 
       chartInstanceRef.current = chart;
+      
+      // Force chart to expand and fill container after creation
+      setTimeout(() => {
+        if (chartInstanceRef.current && chartRef.current) {
+          const container = chartRef.current;
+          const width = container.offsetWidth;
+          const height = container.offsetHeight;
+          
+          console.log('Forcing chart resize to:', { width, height });
+          
+          // Force chart to use full container dimensions
+          chartInstanceRef.current.resize(width, height);
+          
+          // Apply options to ensure chart expands
+          chartInstanceRef.current.applyOptions({
+            width: width,
+            height: height,
+            layout: {
+              background: { color: '#1a1a1a' },
+              textColor: '#ffffff',
+            }
+          });
+        }
+      }, 200);
+      
+      // Try to remove any branding elements after chart creation
+      setTimeout(() => {
+        if (chartRef.current) {
+          const chartContainer = chartRef.current;
+          const brandingElements = chartContainer.querySelectorAll('[class*="logo"], [class*="branding"], [class*="watermark"], [id*="logo"], [id*="branding"], [id*="watermark"]');
+          brandingElements.forEach(el => {
+            el.style.display = 'none';
+          });
+          
+          // Also try to hide any SVG elements that might be branding
+          const svgElements = chartContainer.querySelectorAll('svg');
+          svgElements.forEach(svg => {
+            if (svg.getAttribute('data-role') === 'logo' || 
+                svg.getAttribute('data-role') === 'branding' || 
+                svg.getAttribute('data-role') === 'watermark') {
+              svg.style.display = 'none';
+            }
+          });
+        }
+      }, 100);
+
+      // Removed complex mobile chart axis styling - using default Lightweight Charts behavior
       
       // Create candlestick series
       const candleSeries = chart.addCandlestickSeries({
@@ -1024,6 +1735,8 @@ export default function App() {
       });
       
       candleSeriesRef.current = candleSeries;
+
+      // Removed complex mobile chart options - using default Lightweight Charts behavior
 
       // NEW: Add scroll event handler for historical data loading
       // This function detects when the user scrolls left (goes back in time) and automatically
@@ -1057,6 +1770,11 @@ export default function App() {
 
       // Subscribe to time scale changes
       chart.timeScale().subscribeVisibleTimeRangeChange(handleTimeScaleVisibleRangeChange);
+      
+      // Removed custom price scale label management - using default Lightweight Charts behavior
+
+      // Function to apply mobile chart styling
+      // Removed complex mobile chart styling - using default Lightweight Charts behavior
 
       // CLEANUP: Remove any orphaned lines when chart is recreated
       cleanupAllTradeLines();
@@ -1081,7 +1799,9 @@ export default function App() {
         }
       };
 
+      // Simplified resize handling - removed complex mobile logic
       window.addEventListener('resize', handleResize);
+      
       return () => {
         window.removeEventListener('resize', handleResize);
         
@@ -1090,6 +1810,8 @@ export default function App() {
           clearTimeout(scrollThrottleRef.current);
           scrollThrottleRef.current = null;
         }
+        
+        // Removed custom price scale label management cleanup
         
         if (chartInstanceRef.current) {
           try {
@@ -1319,6 +2041,15 @@ export default function App() {
   }
 
   // NEW: Helper functions for new features
+  const handleCloseTradePage = () => {
+    setIsClosingTradePage(true);
+    setTimeout(() => {
+      setShowMobileTradePage(false);
+      setIsClosingTradePage(false);
+      setActiveTab('chart'); // Always return to chart view
+    }, 400); // Match animation duration
+  };
+
   const quickTimeOptions = [
     { label: "00:10", value: 10 },
     { label: "00:15", value: 15 },
@@ -1446,6 +2177,8 @@ export default function App() {
   //   setWithdrawalAmount(1000); // Reset to default
   // }
 
+
+
   return (
     <div style={{ 
       background: "#0f0f0f", 
@@ -1457,6 +2190,8 @@ export default function App() {
       flexDirection: "column",
       overflow: "hidden"
     }}>
+
+
       {/* Top Header */}
       <div style={{
         minHeight: "60px",
@@ -1469,509 +2204,1407 @@ export default function App() {
         flexWrap: "wrap",
         gap: "10px"
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Symbol:</span>
-            <select 
-              value={symbol} 
-              onChange={(e) => {
-                const newSymbol = e.target.value;
-                setSymbol(newSymbol);
-              }} 
-              style={{ 
-                padding: "4px 8px", 
-                background: "#2a2a2a", 
-                border: "1px solid #444", 
-                borderRadius: "4px", 
-                color: "white",
-                fontSize: "12px",
-                minWidth: "80px"
-              }}
-            >
-              {visiblePairs.length > 0 ? (
-                visiblePairs.map(pairSymbol => (
-                  <option key={pairSymbol} value={pairSymbol}>
-                    {pairSymbol.replace('USDT', '/USDT')} ({profitRates[pairSymbol] || 80}%)
-                  </option>
-                ))
-              ) : (
-                // Fallback options if no admin settings loaded
-                <>
-                  <option value="BTCUSDT">BTC/USDT ({profitRates["BTCUSDT"] || 91}%)</option>
-                  <option value="ETHUSDT">ETH/USDT ({profitRates["ETHUSDT"] || 85}%)</option>
-                  <option value="XRPUSDT">XRP/USDT ({profitRates["XRPUSDT"] || 80}%)</option>
-                  <option value="LTCUSDT">LTC/USDT ({profitRates["LTCUSDT"] || 80}%)</option>
-                  <option value="SOLUSDT">SOL/USDT ({profitRates["SOLUSDT"] || 80}%)</option>
-                  <option value="ADAUSDT">ADA/USDT ({profitRates["ADAUSDT"] || 80}%)</option>
-                  <option value="DOGEUSDT">DOGE/USDT ({profitRates["DOGEUSDT"] || 80}%)</option>
-                  <option value="DOTUSDT">DOT/USDT ({profitRates["DOTUSDT"] || 80}%)</option>
-                  <option value="AVAXUSDT">AVAX/USDT ({profitRates["AVAXUSDT"] || 80}%)</option>
-                  <option value="LINKUSDT">LINK/USDT ({profitRates["LINKUSDT"] || 80}%)</option>
-                </>
-              )}
-            </select>
-          </div>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Timeframe:</span>
-            <select 
-              value={interval} 
-              onChange={(e) => {
-                const newInterval = e.target.value;
-                setIntervalTf(newInterval);
-              }} 
-              style={{ 
-                padding: "4px 8px", 
-                background: "#2a2a2a", 
-                border: "1px solid #444", 
-                borderRadius: "4px", 
-                color: "white",
-                fontSize: "12px",
-                minWidth: "60px"
-              }}
-            >
-              <option value="1m">1m</option>
-              <option value="3m">3m</option>
-              <option value="5m">5m</option>
-              <option value="15m">15m</option>
-              <option value="30m">30m</option>
-              <option value="1h">1h</option>
-              <option value="2h">2h</option>
-              <option value="4h">4h</option>
-              <option value="1d">1d</option>
-            </select>
-          </div>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Stream:</span>
-            <select 
-              value={streamType} 
-              onChange={(e) => {
-                setStreamType(e.target.value);
-              }} 
-              style={{ 
-                padding: "4px 8px", 
-                background: "#2a2a2a", 
-                border: "1px solid #444", 
-                borderRadius: "4px", 
-                color: "white",
-                fontSize: "12px",
-                minWidth: "70px"
-              }}
-            >
-              <option value="kline">Kline</option>
-              <option value="trade">Trade</option>
-            </select>
-          </div>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Status:</span>
-            <div style={{
-              padding: "4px 8px",
-              background: connectionStatus === "connected" ? "#00ff88" : 
-                         connectionStatus === "connecting" ? "#ffaa00" : "#ff4444",
-              borderRadius: "4px",
-              fontSize: "12px",
-              color: connectionStatus === "connected" ? "#000" : "#fff",
-              fontWeight: "bold",
-              minWidth: "80px",
-              textAlign: "center"
-            }}>
-              {connectionStatus.toUpperCase()}
-            </div>
-          </div>
-          
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Timezone:</span>
-            <div style={{ minWidth: "100px" }}>
-              <TimezoneSelector onTimezoneChange={setTimezoneOffset} />
-            </div>
-          </div>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: "15px", flexWrap: "wrap" }}>
-          {/* Account Display with Switcher */}
-          <div className="account-selector" style={{ position: "relative" }}>
-            <div 
-              style={{ 
-                display: "flex", 
-                alignItems: "center", 
-                gap: "10px",
-                background: "#2a2a2a",
-                padding: "8px 12px",
-                borderRadius: "8px",
-                cursor: "pointer",
-                transition: "background-color 0.2s"
-              }}
-              onClick={() => setShowAccountSwitcher(!showAccountSwitcher)}
-              onMouseEnter={(e) => e.target.style.background = "#333"}
-              onMouseLeave={(e) => e.target.style.background = "#2a2a2a"}
-            >
-              <span style={{ fontSize: "16px" }}>
-                {accountType === "demo" ? "🎓" : "💰"}
-              </span>
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ 
-                  fontSize: "12px", 
-                  color: accountType === "demo" ? "#ff8800" : "#00ff88", 
-                  fontWeight: "bold" 
-                }}>
-                  {accountType === "demo" ? "DEMO ACCOUNT" : "REAL ACCOUNT"}
-                </span>
-                <span style={{ fontSize: "14px", color: "white", fontWeight: "bold" }}>
-                  ${Number(currentBalance || 0).toFixed(2)}
-                </span>
+        {isMobile ? (
+          /* Mobile Layout - Centered Account Switcher with Large Trading Controls */
+          <div style={{ 
+            display: "flex", 
+            flexDirection: "column", 
+            alignItems: "center", 
+            gap: "20px",
+            width: "100%"
+          }}>
+            {/* Centered Account Switcher */}
+            <div className="account-selector" style={{ position: "relative" }}>
+              <div 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "15px",
+                  background: "transparent",
+                  padding: "15px 25px",
+                  borderRadius: "15px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAccountSwitcher(prev => !prev);
+                }}
+                onMouseEnter={(e) => e.target.style.background = "rgba(42, 42, 42, 0.3)"}
+                onMouseLeave={(e) => e.target.style.background = "transparent"}
+              >
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                  <span style={{ 
+                    fontSize: "22px", 
+                    color: "white", 
+                    fontWeight: "bold" 
+                  }}>
+                    ${Number(currentBalance || 0).toFixed(2)}
+                  </span>
+                  <span style={{ 
+                    fontSize: "16px", 
+                    color: "#888", 
+                    fontWeight: "500" 
+                  }}>
+                    {accountType === "demo" ? "Demo Account" : "Real Account"}
+                  </span>
+                </div>
+                <span style={{ fontSize: "18px", color: "#666" }}>▼</span>
               </div>
-              <span style={{ fontSize: "12px", color: "#666" }}>▼</span>
-            </div>
 
-            {/* Account Switcher Dropdown */}
-            {showAccountSwitcher && (
-              <div className="account-switcher" style={{
-                position: "absolute",
-                top: "100%",
-                left: "0",
-                right: "0",
-                background: "#1a1a1a",
-                border: "1px solid #444",
-                borderRadius: "8px",
-                marginTop: "5px",
-                zIndex: 1000,
-                boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
-              }}>
-                {/* Demo Account Option */}
-                <div 
-                  style={{
-                    padding: "12px",
-                    cursor: "pointer",
-                    borderBottom: "1px solid #333",
-                    background: accountType === "demo" ? "#2a2a2a" : "transparent"
-                  }}
-                  onClick={() => handleAccountSwitch("demo")}
-                  onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
-                  onMouseLeave={(e) => e.target.style.background = accountType === "demo" ? "#2a2a2a" : "transparent"}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "16px" }}>🎓</span>
-                    <div>
-                      <div style={{ fontSize: "12px", color: "#ff8800", fontWeight: "bold" }}>Demo Account</div>
-                      <div style={{ fontSize: "12px", color: "#ccc" }}>${demoBalance.toFixed(2)}</div>
+              {/* Account Switcher Dropdown for Mobile */}
+              {showAccountSwitcher && (
+                <div className="account-switcher" style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: "0",
+                  right: "0",
+                  background: "#1a1a1a",
+                  border: "1px solid #444",
+                  borderRadius: "8px",
+                  marginTop: "5px",
+                  zIndex: 1000,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                }}>
+                  {/* Demo Account Option - Only show if NOT currently active */}
+                  {accountType !== "demo" && (
+                    <div 
+                      style={{
+                        padding: "12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}
+                      onClick={() => handleAccountSwitch("demo")}
+                      onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
+                      onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "16px" }}>🎓</span>
+                        <div>
+                          <div style={{ fontSize: "12px", color: "#ff8800", fontWeight: "bold" }}>Demo Account</div>
+                          <div style={{ fontSize: "12px", color: "#ccc" }}>${demoBalance.toFixed(2)}</div>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                
-                {/* Real Account Option */}
-                <div 
-                  style={{
-                    padding: "12px",
-                    cursor: "pointer",
-                    borderBottom: "1px solid #333",
-                    background: accountType === "real" ? "#2a2a2a" : "transparent"
-                  }}
-                  onClick={() => handleAccountSwitch("real")}
-                  onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
-                  onMouseLeave={(e) => e.target.style.background = accountType === "real" ? "#2a2a2a" : "transparent"}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <span style={{ fontSize: "16px" }}>💰</span>
-                    <div>
-                      <div style={{ fontSize: "12px", color: "#00ff88", fontWeight: "bold" }}>Real Account</div>
-                      <div style={{ fontSize: "12px", color: "#ccc" }}>${realBalance.toFixed(2)}</div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* User Info Section - Only show if user is logged in */}
-                {user && (
-                  <>
-                    {/* Username */}
+                  )}
+                  
+                  {/* Refill Balance Button - Only for demo accounts when active */}
+                  {accountType === "demo" && (
                     <div style={{
                       padding: "12px",
                       borderBottom: "1px solid #333",
-                      background: "transparent"
-                    }}>
-                      <div style={{ 
-                        fontSize: "14px", 
-                        color: "#fff", 
-                        fontWeight: "600",
-                        textShadow: "0 1px 2px rgba(0,0,0,0.5)"
-                      }}>
-                        {user.username || "Username: -"}
-                      </div>
-                    </div>
-                    
-                    {/* User ID */}
-                    <div style={{
-                      padding: "12px",
-                      borderBottom: "1px solid #333",
-                      background: "transparent"
-                    }}>
-                      <div style={{ 
-                        fontSize: "12px", 
-                        color: "#888",
-                        fontWeight: "500"
-                      }}>
-                        ID: {user.id || "-"}
-                      </div>
-                    </div>
-                    
-                    {/* Admin Badge - if user is admin */}
-                    {Boolean(user?.isAdmin) && (
-                      <div style={{
-                        padding: "8px 12px",
-                        borderBottom: "1px solid #333",
-                        background: "transparent",
-                        display: "flex",
-                        justifyContent: "center"
-                      }}>
-                        <button
-                          onClick={() => window.location.href = '/admin'}
-                          style={{
-                            background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
-                            color: "#000",
-                            padding: "4px 8px",
-                            borderRadius: "6px",
-                            fontSize: "10px",
-                            fontWeight: "bold",
-                            textTransform: "uppercase",
-                            boxShadow: "0 2px 4px rgba(255,136,0,0.3)",
-                            border: "1px solid #ffaa00",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: "4px",
-                            cursor: "pointer",
-                            transition: "all 0.2s ease"
-                          }}
-                          onMouseOver={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
-                            e.target.style.transform = "translateY(-1px)";
-                            e.target.style.boxShadow = "0 4px 8px rgba(255,136,0,0.4)";
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
-                            e.target.style.transform = "translateY(0)";
-                            e.target.style.boxShadow = "0 2px 4px rgba(255,136,0,0.3)";
-                          }}
-                          aria-label="Admin"
-                        >
-                          🛡 Admin
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Deposit Button - Only for real accounts */}
-                    {accountType === "real" && (
-                      <div style={{
-                        padding: "12px",
-                        borderBottom: "1px solid #333",
-                        background: "transparent"
-                      }}>
-                        <button
-                          onClick={() => window.location.href = '/deposit'}
-                          aria-label="Deposit"
-                          style={{
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)",
-                            border: "1px solid #00ff88",
-                            borderRadius: "8px",
-                            color: "#000",
-                            fontWeight: "bold",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
-                            transition: "all 0.2s ease",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px"
-                          }}
-                          onMouseOver={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #00ffaa 0%, #00ff88 100%)";
-                            e.target.style.transform = "translateY(-1px)";
-                            e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)";
-                            e.target.style.transform = "translateY(0)";
-                            e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
-                          }}
-                        >
-                          💰 Deposit
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Withdrawal Button - Only for real accounts */}
-                    {accountType === "real" && (
-                      <div style={{
-                        padding: "12px",
-                        borderBottom: "1px solid #333",
-                        background: "transparent"
-                      }}>
-                        <button
-                          onClick={() => window.location.href = '/withdrawal'}
-                          aria-label="Withdrawal"
-                          style={{
-                            width: "100%",
-                            padding: "10px 16px",
-                            background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
-                            border: "1px solid #ff8800",
-                            borderRadius: "8px",
-                            color: "#000",
-                            fontWeight: "bold",
-                            fontSize: "12px",
-                            cursor: "pointer",
-                            boxShadow: "0 2px 8px rgba(255,136,0,0.3)",
-                            transition: "all 0.2s ease",
-                            textTransform: "uppercase",
-                            letterSpacing: "0.5px"
-                          }}
-                          onMouseOver={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
-                            e.target.style.transform = "translateY(-1px)";
-                            e.target.style.boxShadow = "0 4px 12px rgba(255,136,0,0.4)";
-                          }}
-                          onMouseOut={(e) => {
-                            e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
-                            e.target.style.transform = "translateY(0)";
-                            e.target.style.boxShadow = "0 2px 8px rgba(255,136,0,0.3)";
-                          }}
-                        >
-                          💸 Withdrawal
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Logout Button */}
-                    <div style={{
-                      padding: "12px",
                       background: "transparent"
                     }}>
                       <button
-                        onClick={logout}
-                        aria-label="Logout"
+                        onClick={refillBalance}
+                        aria-label="Refill Balance"
                         style={{
                           width: "100%",
                           padding: "10px 16px",
-                          background: "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)",
-                          border: "1px solid #ff6666",
+                          background: "#00ff88",
+                          border: "1px solid #00ff88",
                           borderRadius: "8px",
-                          color: "white",
+                          color: "#000",
                           fontWeight: "bold",
                           fontSize: "12px",
                           cursor: "pointer",
-                          boxShadow: "0 2px 8px rgba(255,68,68,0.3)",
+                          boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
                           transition: "all 0.2s ease",
                           textTransform: "uppercase",
                           letterSpacing: "0.5px"
                         }}
                         onMouseOver={(e) => {
-                          e.target.style.background = "linear-gradient(135deg, #ff6666 0%, #ff4444 100%)";
+                          e.target.style.background = "#00ffaa";
                           e.target.style.transform = "translateY(-1px)";
-                          e.target.style.boxShadow = "0 4px 12px rgba(255,68,68,0.4)";
+                          e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
                         }}
                         onMouseOut={(e) => {
-                          e.target.style.background = "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)";
+                          e.target.style.background = "#00ff88";
                           e.target.style.transform = "translateY(0)";
-                          e.target.style.boxShadow = "0 2px 8px rgba(255,68,68,0.3)";
+                          e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
                         }}
                       >
-                        Logout
+                        Refill
                       </button>
                     </div>
+                  )}
+                  
+                  {/* Real Account Option - Only show if NOT currently active */}
+                  {accountType !== "real" && (
+                    <div 
+                      style={{
+                        padding: "12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}
+                      onClick={() => handleAccountSwitch("real")}
+                      onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
+                      onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "16px" }}>💰</span>
+                        <div>
+                          <div style={{ fontSize: "12px", color: "#00ff88", fontWeight: "bold" }}>Real Account</div>
+                          <div style={{ fontSize: "12px", color: "#ccc" }}>${realBalance.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* User Info Section - Only show if user is logged in */}
+                  {user && (
+                    <>
+                      {/* Username */}
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <div style={{ 
+                          fontSize: "14px", 
+                          color: "#fff", 
+                          fontWeight: "600",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.5)"
+                        }}>
+                          {user.username || "Username: -"}
+                        </div>
+                      </div>
+                      
+                      {/* User ID */}
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <div style={{ 
+                          fontSize: "12px", 
+                          color: "#888",
+                          fontWeight: "500"
+                        }}>
+                          ID: {user.id || "-"}
+                        </div>
+                      </div>
+                      
+                      {/* Admin Badge - if user is admin */}
+                      {Boolean(user?.isAdmin) && (
+                        <div style={{
+                          padding: "8px 12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent",
+                          display: "flex",
+                          justifyContent: "center"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/admin'}
+                            style={{
+                              background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
+                              color: "#000",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              fontSize: "10px",
+                              fontWeight: "bold",
+                              textTransform: "uppercase",
+                              boxShadow: "0 2px 4px rgba(255,136,0,0.3)",
+                              border: "1px solid #ffaa00",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
+                              e.target.style.transform = "translateY(-1px)";
+                              e.target.style.boxShadow = "0 4px 8px rgba(255,136,0,0.4)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
+                              e.target.style.transform = "translateY(0)";
+                              e.target.style.boxShadow = "0 2px 4px rgba(255,136,0,0.3)";
+                            }}
+                            aria-label="Admin"
+                          >
+                            🛡 Admin
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Deposit Button - Only for real accounts */}
+                      {accountType === "real" && (
+                        <div style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/deposit'}
+                            aria-label="Deposit"
+                            style={{
+                              width: "100%",
+                              padding: "10px 16px",
+                              background: "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)",
+                              border: "1px solid #00ff88",
+                              borderRadius: "8px",
+                              color: "#000",
+                              fontWeight: "bold",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
+                              transition: "all 0.2s ease",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #00ffaa 0%, #00ff88 100%)";
+                              e.target.style.transform = "translateY(-1px)";
+                              e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)";
+                              e.target.style.transform = "translateY(0)";
+                              e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
+                            }}
+                          >
+                            💰 Deposit
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Withdrawal Button - Only for real accounts */}
+                      {accountType === "real" && (
+                        <div style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/withdrawal'}
+                            aria-label="Withdrawal"
+                            style={{
+                              width: "100%",
+                              padding: "10px 16px",
+                              background: "transparent",
+                              border: "1px solid rgba(255, 255, 255, 0.2)",
+                              borderRadius: "18px",
+                              color: "white",
+                              fontWeight: "600",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                              e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "transparent";
+                              e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                            }}
+                          >
+                            💸 Withdrawal
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Logout Button */}
+                      <div style={{
+                        padding: "12px",
+                        background: "transparent"
+                      }}>
+                        <button
+                          onClick={logout}
+                          aria-label="Logout"
+                          style={{
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)",
+                            border: "1px solid #ff6666",
+                            borderRadius: "8px",
+                            color: "white",
+                            fontWeight: "bold",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 8px rgba(255,68,68,0.3)",
+                            transition: "all 0.2s ease",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px"
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff6666 0%, #ff4444 100%)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow = "0 4px 12px rgba(255,68,68,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)";
+                            e.target.style.transform = "translateY(0)";
+                            e.target.style.boxShadow = "0 2px 8px rgba(255,68,68,0.3)";
+                          }}
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Large Trading Controls Row */}
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              gap: "20px",
+              width: "100%",
+              justifyContent: "center"
+            }}>
+              {/* Large Symbol Selector - 85% of page width */}
+              <div className="mobile-symbol-selector" style={{ 
+                background: "transparent",
+                padding: "20px 25px",
+                borderRadius: "15px",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                minWidth: "180px",
+                flex: "0 0 85%",
+                maxWidth: "85%"
+              }}>
+                <select 
+                  value={symbol} 
+                  onChange={(e) => {
+                    const newSymbol = e.target.value;
+                    setSymbol(newSymbol);
+                  }} 
+                  className="mobile-symbol-select"
+                  style={{ 
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    width: "100%",
+                    textAlign: "left"
+                  }}
+                >
+                  {visiblePairs.length > 0 ? (
+                    visiblePairs.map(pairSymbol => (
+                      <option key={pairSymbol} value={pairSymbol}>
+                        {pairSymbol.replace('USDT', '/USDT')} • {profitRates[pairSymbol] || 80}%
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="BTCUSDT">BTC/USDT • {profitRates["BTCUSDT"] || 91}%</option>
+                      <option value="ETHUSDT">ETH/USDT • {profitRates["ETHUSDT"] || 85}%</option>
+                      <option value="XRPUSDT">XRP/USDT • {profitRates["XRPUSDT"] || 80}%</option>
+                      <option value="LTCUSDT">LTC/USDT • {profitRates["LTCUSDT"] || 80}%</option>
+                      <option value="SOLUSDT">SOL/USDT • {profitRates["SOLUSDT"] || 80}%</option>
+                      <option value="ADAUSDT">ADA/USDT • {profitRates["ADAUSDT"] || 80}%</option>
+                      <option value="DOGEUSDT">DOGE/USDT • {profitRates["DOGEUSDT"] || 80}%</option>
+                      <option value="DOTUSDT">DOT/USDT • {profitRates["DOTUSDT"] || 80}%</option>
+                      <option value="AVAXUSDT">AVAX/USDT • {profitRates["AVAXUSDT"] || 80}%</option>
+                      <option value="LINKUSDT">LINK/USDT • {profitRates["LINKUSDT"] || 80}%</option>
+                    </>
+                  )}
+                </select>
+              </div>
+              
+              {/* Large Timeframe Selector - 15% of page width */}
+              <div className="mobile-timeframe-selector" style={{ 
+                background: "transparent",
+                padding: "20px 25px",
+                borderRadius: "15px",
+                border: "1px solid rgba(255, 255, 255, 0.2)",
+                minWidth: "120px",
+                flex: "0 0 15%",
+                maxWidth: "15%"
+              }}>
+                <select 
+                  value={interval} 
+                  onChange={(e) => {
+                    const newInterval = e.target.value;
+                    setIntervalTf(newInterval);
+                  }} 
+                  className="mobile-timeframe-select"
+                  style={{ 
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    fontSize: "20px",
+                    fontWeight: "600",
+                    width: "100%",
+                    textAlign: "center",
+                    fontSize: "40px"
+                  }}
+                >
+                  <option value="1m">1m</option>
+                  <option value="3m">3m</option>
+                  <option value="5m">5m</option>
+                  <option value="15m">15m</option>
+                  <option value="30m">30m</option>
+                  <option value="1h">1h</option>
+                  <option value="2h">2h</option>
+                  <option value="4h">4h</option>
+                  <option value="1d">1d</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Desktop Layout - Reorganized layout */
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "nowrap", width: "100%" }}>
+            {/* ORLIX Logo */}
+            <div style={{ 
+              display: "flex", 
+              alignItems: "center", 
+              flexShrink: 0
+            }}>
+              <span style={{
+                fontSize: "32px",
+                fontWeight: "700",
+                color: "white",
+                textDecoration: "none",
+                transition: "color 0.3s ease"
+              }}>
+                ORLIX
+              </span>
+            </div>
+            
+            {/* Symbol Selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {!isMobile && (
+                <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Symbol:</span>
+              )}
+              <select 
+                value={symbol} 
+                onChange={(e) => {
+                  const newSymbol = e.target.value;
+                  setSymbol(newSymbol);
+                }} 
+                style={{ 
+                  padding: "4px 8px", 
+                  background: "#2a2a2a", 
+                  border: "1px solid #444", 
+                  borderRadius: "4px", 
+                  color: "white",
+                  fontSize: "12px",
+                  minWidth: "80px"
+                }}
+              >
+                {visiblePairs.length > 0 ? (
+                  visiblePairs.map(pairSymbol => (
+                    <option key={pairSymbol} value={pairSymbol}>
+                      {pairSymbol.replace('USDT', '/USDT')} ({profitRates[pairSymbol] || 80}%)
+                    </option>
+                  ))
+                ) : (
+                  // Fallback options if no admin settings loaded
+                  <>
+                    <option value="BTCUSDT">BTC/USDT ({profitRates["BTCUSDT"] || 91}%)</option>
+                    <option value="ETHUSDT">ETH/USDT ({profitRates["ETHUSDT"] || 85}%)</option>
+                    <option value="XRPUSDT">XRP/USDT ({profitRates["XRPUSDT"] || 80}%)</option>
+                    <option value="LTCUSDT">LTC/USDT ({profitRates["LTCUSDT"] || 80}%)</option>
+                    <option value="SOLUSDT">SOL/USDT ({profitRates["SOLUSDT"] || 80}%)</option>
+                    <option value="ADAUSDT">ADA/USDT ({profitRates["ADAUSDT"] || 80}%)</option>
+                    <option value="DOGEUSDT">DOGE/USDT ({profitRates["DOGEUSDT"] || 80}%)</option>
+                    <option value="DOTUSDT">DOT/USDT ({profitRates["DOTUSDT"] || 80}%)</option>
+                    <option value="AVAXUSDT">AVAX/USDT ({profitRates["AVAXUSDT"] || 80}%)</option>
+                    <option value="LINKUSDT">LINK/USDT ({profitRates["LINKUSDT"] || 80}%)</option>
                   </>
                 )}
+              </select>
+            </div>
+            
+            {/* Timeframe Selector */}
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              {!isMobile && (
+                <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Timeframe:</span>
+              )}
+              <select 
+                value={interval} 
+                onChange={(e) => {
+                  const newInterval = e.target.value;
+                  setIntervalTf(newInterval);
+                }} 
+                style={{ 
+                  padding: "4px 8px", 
+                  background: "#2a2a2a", 
+                  border: "1px solid #444", 
+                  borderRadius: "4px", 
+                  color: "white",
+                  fontSize: "12px",
+                  minWidth: "60px"
+                }}
+              >
+                <option value="1m">1m</option>
+                <option value="3m">3m</option>
+                <option value="5m">5m</option>
+                <option value="15m">15m</option>
+                <option value="30m">30m</option>
+                <option value="1h">1h</option>
+                <option value="2h">2h</option>
+                <option value="4h">4h</option>
+                <option value="1d">1d</option>
+              </select>
+            </div>
+            
+            {/* Stream - Only show for admin users */}
+            {!isMobile && user && user.isAdmin === true ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Stream:</span>
+                <select 
+                  value={streamType} 
+                  onChange={(e) => {
+                    setStreamType(e.target.value);
+                  }} 
+                  style={{ 
+                    padding: "4px 8px", 
+                    background: "transparent", 
+                    border: "1px solid rgba(255, 255, 255, 0.2)", 
+                    borderRadius: "18px", 
+                    color: "white",
+                    fontSize: "12px",
+                    minWidth: "70px",
+                    transition: "all 0.3s ease"
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                    e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = "transparent";
+                    e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                  }}
+                >
+                  <option value="kline">Kline</option>
+                  <option value="trade">Trade</option>
+                </select>
+              </div>
+            ) : null}
+            
+            {/* Status - Only show for admin users */}
+            {!isMobile && user && user.isAdmin === true ? (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Status:</span>
+                <div style={{
+                  padding: "4px 8px",
+                  background: connectionStatus === "connected" ? "#00ff88" : 
+                             connectionStatus === "connecting" ? "#ffaa00" : "#ff4444",
+                  borderRadius: "4px",
+                  fontSize: "12px",
+                  color: connectionStatus === "connected" ? "#000" : "#fff",
+                  fontWeight: "bold",
+                  minWidth: "80px",
+                  textAlign: "center"
+                }}>
+                  {connectionStatus.toUpperCase()}
+                </div>
+              </div>
+            ) : null}
+            
+            {/* Timezone */}
+            {!isMobile && (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <span style={{ fontSize: "12px", color: "#666", whiteSpace: "nowrap" }}>Timezone:</span>
+                <div style={{ minWidth: "100px" }}>
+                  <TimezoneSelector onTimezoneChange={setTimezoneOffset} />
+                </div>
               </div>
             )}
+
+            {/* Desktop Account Switcher - Moved to right end */}
+            <div className="account-selector" style={{ position: "relative", marginLeft: "auto" }}>
+              <div 
+                style={{ 
+                  display: "flex", 
+                  alignItems: "center", 
+                  gap: "10px",
+                  background: "#2a2a2a",
+                  padding: "8px 12px",
+                  borderRadius: "8px",
+                  cursor: "pointer",
+                  transition: "background-color 0.2s"
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowAccountSwitcher(prev => !prev);
+                }}
+                onMouseEnter={(e) => e.target.style.background = "#333"}
+                onMouseLeave={(e) => e.target.style.background = "#2a2a2a"}
+              >
+                <span style={{ fontSize: "16px" }}>
+                  {accountType === "demo" ? "🎓" : "💰"}
+                </span>
+                <div style={{ display: "flex", flexDirection: "column" }}>
+                  <span style={{ 
+                    fontSize: "12px", 
+                    color: accountType === "demo" ? "#ff8800" : "#00ff88", 
+                    fontWeight: "bold" 
+                  }}>
+                    {accountType === "demo" ? "DEMO ACCOUNT" : "REAL ACCOUNT"}
+                  </span>
+                  <span style={{ fontSize: "14px", color: "white", fontWeight: "bold" }}>
+                    ${Number(currentBalance || 0).toFixed(2)}
+                  </span>
+                </div>
+                <span style={{ fontSize: "12px", color: "#666" }}>▼</span>
+              </div>
+
+              {/* Account Switcher Dropdown for Desktop */}
+              {showAccountSwitcher && (
+                <div className="account-switcher" style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: "0",
+                  right: "0",
+                  background: "#1a1a1a",
+                  border: "1px solid #444",
+                  borderRadius: "8px",
+                  marginTop: "5px",
+                  zIndex: 1000,
+                  boxShadow: "0 4px 12px rgba(0,0,0,0.5)"
+                }}>
+                  {/* Demo Account Option - Only show if NOT currently active */}
+                  {accountType !== "demo" && (
+                    <div 
+                      style={{
+                        padding: "12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}
+                      onClick={() => handleAccountSwitch("demo")}
+                      onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
+                      onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "16px" }}>🎓</span>
+                        <div>
+                          <div style={{ fontSize: "12px", color: "#ff8800", fontWeight: "bold" }}>Demo Account</div>
+                          <div style={{ fontSize: "12px", color: "#ccc" }}>${demoBalance.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Refill Balance Button - Only for demo accounts when active */}
+                  {accountType === "demo" && (
+                    <div style={{
+                      padding: "12px",
+                      borderBottom: "1px solid #333",
+                      background: "transparent"
+                    }}>
+                      <button
+                        onClick={refillBalance}
+                        aria-label="Refill Balance"
+                        style={{
+                          width: "100%",
+                          padding: "10px 16px",
+                          background: "#00ff88",
+                          border: "1px solid #00ff88",
+                          borderRadius: "8px",
+                          color: "#000",
+                          fontWeight: "bold",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
+                          transition: "all 0.2s ease",
+                          textTransform: "uppercase",
+                          letterSpacing: "0.5px"
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = "#00ffaa";
+                          e.target.style.transform = "translateY(-1px)";
+                          e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = "#00ff88";
+                          e.target.style.transform = "translateY(0)";
+                          e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
+                        }}
+                      >
+                        Refill
+                      </button>
+                    </div>
+                  )}
+                  
+                  {/* Real Account Option - Only show if NOT currently active */}
+                  {accountType !== "real" && (
+                    <div 
+                      style={{
+                        padding: "12px",
+                        cursor: "pointer",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}
+                      onClick={() => handleAccountSwitch("real")}
+                      onMouseEnter={(e) => e.target.style.background = "#2a2a2a"}
+                      onMouseLeave={(e) => e.target.style.background = "transparent"}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <span style={{ fontSize: "16px" }}>💰</span>
+                        <div>
+                          <div style={{ fontSize: "12px", color: "#00ff88", fontWeight: "bold" }}>Real Account</div>
+                          <div style={{ fontSize: "12px", color: "#ccc" }}>${realBalance.toFixed(2)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* User Info Section - Only show if user is logged in */}
+                  {user && (
+                    <>
+                      {/* Username */}
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <div style={{ 
+                          fontSize: "14px", 
+                          color: "#fff", 
+                          fontWeight: "600",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.5)"
+                        }}>
+                          {user.username || "Username: -"}
+                        </div>
+                      </div>
+                      
+                      {/* User ID */}
+                      <div style={{
+                        padding: "12px",
+                        borderBottom: "1px solid #333",
+                        background: "transparent"
+                      }}>
+                        <div style={{ 
+                          fontSize: "12px", 
+                          color: "#888",
+                          fontWeight: "500"
+                        }}>
+                          ID: {user.id || "-"}
+                        </div>
+                      </div>
+                      
+                      {/* Admin Badge - if user is admin */}
+                      {Boolean(user?.isAdmin) && (
+                        <div style={{
+                          padding: "8px 12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent",
+                          display: "flex",
+                          justifyContent: "center"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/admin'}
+                            style={{
+                              background: "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)",
+                              color: "#000",
+                              padding: "4px 8px",
+                              borderRadius: "6px",
+                              fontSize: "10px",
+                              fontWeight: "bold",
+                              textTransform: "uppercase",
+                              boxShadow: "0 2px 4px rgba(255,136,0,0.3)",
+                              border: "1px solid #ffaa00",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "4px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #ffaa00 0%, #ff8800 100%)";
+                              e.target.style.transform = "translateY(-1px)";
+                              e.target.style.boxShadow = "0 4px 8px rgba(255,136,0,0.4)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #ff8800 0%, #ff6600 100%)";
+                              e.target.style.transform = "translateY(0)";
+                              e.target.style.boxShadow = "0 2px 4px rgba(255,136,0,0.3)";
+                            }}
+                            aria-label="Admin"
+                          >
+                            🛡 Admin
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Deposit Button - Only for real accounts */}
+                      {accountType === "real" && (
+                        <div style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/deposit'}
+                            aria-label="Deposit"
+                            style={{
+                              width: "100%",
+                              padding: "10px 16px",
+                              background: "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)",
+                              border: "1px solid #00ff88",
+                              borderRadius: "8px",
+                              color: "#000",
+                              fontWeight: "bold",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              boxShadow: "0 2px 8px rgba(0,255,136,0.3)",
+                              transition: "all 0.2s ease",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #00ffaa 0%, #00ff88 100%)";
+                              e.target.style.transform = "translateY(-1px)";
+                              e.target.style.boxShadow = "0 4px 12px rgba(0,255,136,0.4)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "linear-gradient(135deg, #00ff88 0%, #00cc66 100%)";
+                              e.target.style.transform = "translateY(0)";
+                              e.target.style.boxShadow = "0 2px 8px rgba(0,255,136,0.3)";
+                            }}
+                          >
+                            💰 Deposit
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Withdrawal Button - Only for real accounts */}
+                      {accountType === "real" && (
+                        <div style={{
+                          padding: "12px",
+                          borderBottom: "1px solid #333",
+                          background: "transparent"
+                        }}>
+                          <button
+                            onClick={() => window.location.href = '/withdrawal'}
+                            aria-label="Withdrawal"
+                            style={{
+                              width: "100%",
+                              padding: "10px 16px",
+                              background: "transparent",
+                              border: "1px solid rgba(255, 255, 255, 0.2)",
+                              borderRadius: "18px",
+                              color: "white",
+                              fontWeight: "600",
+                              fontSize: "12px",
+                              cursor: "pointer",
+                              transition: "all 0.3s ease",
+                              textTransform: "uppercase",
+                              letterSpacing: "0.5px"
+                            }}
+                            onMouseOver={(e) => {
+                              e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                              e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                            }}
+                            onMouseOut={(e) => {
+                              e.target.style.background = "transparent";
+                              e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                            }}
+                          >
+                            💸 Withdrawal
+                          </button>
+                        </div>
+                      )}
+                      
+                      {/* Logout Button */}
+                      <div style={{
+                        padding: "12px",
+                        background: "transparent"
+                      }}>
+                        <button
+                          onClick={logout}
+                          aria-label="Logout"
+                          style={{
+                            width: "100%",
+                            padding: "10px 16px",
+                            background: "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)",
+                            border: "1px solid #ff6666",
+                            borderRadius: "8px",
+                            color: "white",
+                            fontWeight: "bold",
+                            fontSize: "12px",
+                            cursor: "pointer",
+                            boxShadow: "0 2px 8px rgba(255,68,68,0.3)",
+                            transition: "all 0.2s ease",
+                            textTransform: "uppercase",
+                            letterSpacing: "0.5px"
+                          }}
+                          onMouseOver={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff6666 0%, #ff4444 100%)";
+                            e.target.style.transform = "translateY(-1px)";
+                            e.target.style.boxShadow = "0 4px 12px rgba(255,68,68,0.4)";
+                          }}
+                          onMouseOut={(e) => {
+                            e.target.style.background = "linear-gradient(135deg, #ff4444 0%, #cc3333 100%)";
+                            e.target.style.boxShadow = "0 2px 8px rgba(255,68,68,0.3)";
+                          }}
+                        >
+                          Logout
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
+
           </div>
-          
-          {/* Conditional Balance Buttons */}
-          {accountType === "demo" ? (
-            <button
-              onClick={refillBalance}
-              style={{
-                padding: "8px 12px",
-                background: "#00ff88",
-                border: "none",
-                borderRadius: "6px",
-                color: "#000",
-                fontWeight: "bold",
-                fontSize: "12px",
-                cursor: "pointer",
-                whiteSpace: "nowrap"
-              }}
-            >
-              Refill Balance
-            </button>
-          ) : (
-            <div style={{ display: "flex", gap: "8px" }}>
+        )}
+
+        
+              </div>
+
+        {/* Mobile Trade Page - Full Page Overlay */}
+        {(showMobileTradePage || isClosingTradePage) && (
+          <div className="mobile-trade-page" style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            background: "#1a1a1a",
+            zIndex: 2000,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            transform: isClosingTradePage ? "translateY(100%)" : "translateY(0)",
+            transition: "transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.4s cubic-bezier(0.4, 0, 0.2, 1)",
+            opacity: isClosingTradePage ? 0 : 1,
+            animation: isClosingTradePage ? "none" : "slideInFromBottom 0.4s cubic-bezier(0.4, 0, 0.2, 1)"
+          }}>
+            {/* Header */}
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              padding: "20px",
+              borderBottom: "1px solid #2a2a2a",
+              background: "#1a1a1a"
+            }}>
+              <h1 style={{ 
+                margin: 0, 
+                color: "white", 
+                fontSize: "16px", 
+                fontWeight: "bold" 
+              }}>
+                Trades
+              </h1>
               <button
-                onClick={handleDeposit}
+                className="close-btn"
+                onClick={handleCloseTradePage}
                 style={{
-                  padding: "8px 12px",
-                  background: "#00ff88",
+                  background: "none",
                   border: "none",
-                  borderRadius: "6px",
-                  color: "#000",
-                  fontWeight: "bold",
-                  fontSize: "12px",
+                  color: "white",
+                  fontSize: "16px",
                   cursor: "pointer",
-                  whiteSpace: "nowrap"
+                  padding: "8px",
+                  borderRadius: "4px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: "107px",
+                  height: "107px"
                 }}
               >
-                Deposit
-              </button>
-              <button
-                onClick={handleWithdrawal}
-                style={{
-                  padding: "8px 12px",
-                  background: "#ff8800",
-                  border: "none",
-                  borderRadius: "6px",
-                  color: "#000",
-                  fontWeight: "bold",
-                  fontSize: "12px",
-                  cursor: "pointer",
-                  whiteSpace: "nowrap"
-                }}
-              >
-                Withdrawal
+                ×
               </button>
             </div>
-          )}
-          
 
-        </div>
-      </div>
+            {/* Navigation Tabs */}
+            <div style={{
+              display: "flex",
+              borderBottom: "1px solid #2a2a2a",
+              background: "#1a1a1a"
+            }}>
+                              <button
+                onClick={() => setActiveTab('trades')}
+                style={{
+                  flex: 1,
+                  padding: "43px",
+                  background: "none",
+                  border: "none",
+                  color: activeTab === 'trades' ? "white" : "#666",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  borderBottom: activeTab === 'trades' ? "5px solid white" : "none",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                Active trades
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                style={{
+                  flex: 1,
+                  padding: "43px",
+                  background: "none",
+                  border: "none",
+                  color: activeTab === 'history' ? "white" : "#666",
+                  fontSize: "16px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  borderBottom: activeTab === 'history' ? "5px solid white" : "none",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                Trade History
+              </button>
+            </div>
 
-      {/* Chart and Trading Area */}
-      <div style={{ 
-        flex: 1, 
-        display: "grid", 
-        gridTemplateColumns: "1fr 300px",
-        background: "#0f0f0f",
-        minHeight: 0,
-        width: "100%"
-      }}>
-        {/* Chart Area */}
+            {/* Content Area */}
+            <div className="trade-content" style={{
+              flex: 1,
+              padding: "53px",
+              overflow: "auto"
+            }}>
+              {activeTab === 'trades' ? (
+                // Active Trades Tab
+                <div className="active-trades-tab">
+                  {activeTradesForDisplay.length === 0 ? (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      color: "#666",
+                      textAlign: "center"
+                    }}>
+
+                      <div className="no-trades-text" style={{
+                        fontSize: "16px",
+                        color: "#666"
+                      }}>
+                        No active trades
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "40px"
+                    }}>
+                      {activeTradesForDisplay.map((trade) => {
+                        const timeLeft = Math.max(0, trade.expiryTime - now);
+                        const minutes = Math.floor(timeLeft / 60);
+                        const seconds = timeLeft % 60;
+                        const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                        
+                        // Calculate real-time payout
+                        const realTimePayout = calculateRealTimePayout(trade);
+                        
+                        return (
+                          <div
+                            key={trade.id}
+                            style={{
+                              background: "#2a2a2a",
+                              padding: "53px",
+                              borderRadius: "32px",
+                              border: `3px solid ${trade.side === "CALL" ? "#00ff88" : "#ff4444"}`,
+                              cursor: "pointer",
+                              transition: "all 0.2s ease"
+                            }}
+                            onClick={() => handleActiveTradeClick(trade)}
+                            onMouseEnter={(e) => e.target.style.transform = "translateY(-2px)"}
+                            onMouseLeave={(e) => e.target.style.transform = "translateY(0)"}
+                          >
+                            <div style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "40px"
+                            }}>
+                              <div className="trade-symbol" style={{
+                                fontSize: "16px",
+                                fontWeight: "bold",
+                                color: "white"
+                              }}>
+                                {trade.symbol.replace('USDT', '/USDT')}
+                              </div>
+                              <div className="countdown" style={{
+                                fontSize: "16px",
+                                fontWeight: "bold",
+                                color: "#ffaa00"
+                              }}>
+                                {countdownText}
+                              </div>
+                            </div>
+                            
+                            <div style={{
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                              marginBottom: "40px"
+                            }}>
+                              <div style={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: "32px"
+                              }}>
+                                <div className="trade-arrow" style={{
+                                  width: "107px",
+                                  height: "107px",
+                                  borderRadius: "50%",
+                                  background: trade.side === "CALL" ? "#00ff88" : "#ff4444",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontSize: "53px",
+                                  color: "#000",
+                                  fontWeight: "bold"
+                                }}>
+                                  {trade.side === "CALL" ? "↑" : "↓"}
+                                </div>
+                                <span className="trade-amount" style={{
+                                  fontSize: "53px",
+                                  fontWeight: "bold",
+                                  color: trade.side === "CALL" ? "#00ff88" : "#ff4444"
+                                }}>
+                                  ${trade.amount}
+                                </span>
+                              </div>
+                              <div className="payout-amount" style={{
+                                fontSize: "48px",
+                                fontWeight: "bold",
+                                color: realTimePayout.status === 'winning' ? "#00ff88" : 
+                                       realTimePayout.status === 'losing' ? "#ff4444" : 
+                                       realTimePayout.status === 'refunding' ? "#ffaa00" : "#666"
+                              }}>
+                                ${realTimePayout.amount.toFixed(2)}
+                              </div>
+                            </div>
+                            
+                            {/* Progress Bar */}
+                            <div style={{
+                              height: "16px",
+                              background: "#444",
+                              borderRadius: "8px",
+                              overflow: "hidden"
+                            }}>
+                              <div style={{
+                                width: `${((trade.duration - timeLeft) / trade.duration) * 100}%`,
+                                height: "100%",
+                                background: trade.side === "CALL" ? "#00ff88" : "#ff4444",
+                                borderRadius: "8px",
+                                transition: "width 1s linear"
+                              }} />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                // Trade History Tab
+                <div className="trade-history-tab">
+                  {historyAllNewestFirst.length === 0 ? (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      height: "100%",
+                      color: "#666",
+                      textAlign: "center"
+                    }}>
+                      <div className="no-history-icon" style={{
+                        fontSize: "213px",
+                        marginBottom: "53px",
+                        opacity: "0.5"
+                      }}>
+                        ↕️
+                      </div>
+                      <div className="no-history-text" style={{
+                        fontSize: "48px",
+                        color: "#666"
+                      }}>
+                        No trade history
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "40px"
+                    }}>
+                      {historyAllNewestFirst.slice(0, 20).map((trade) => (
+                        <div
+                          key={trade.id}
+                          style={{
+                            background: "#2a2a2a",
+                            padding: "53px",
+                            borderRadius: "32px",
+                            border: `3px solid ${trade.result === "WIN" ? "#00ff88" : 
+                                                   trade.result === "LOSE" ? "#ff4444" : "#ffaa00"}`,
+                            cursor: "pointer",
+                            transition: "all 0.2s ease"
+                          }}
+                          onClick={() => handleHistoryTradeClick(trade)}
+                          onMouseEnter={(e) => e.target.style.transform = "translateY(-2px)"}
+                          onMouseLeave={(e) => e.target.style.transform = "translateY(0)"}
+                        >
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "40px"
+                          }}>
+                            <div className="trade-symbol" style={{
+                              fontSize: "48px",
+                              fontWeight: "bold",
+                              color: "white"
+                            }}>
+                              {trade.symbol.replace('USDT', '/USDT')}
+                            </div>
+                            <div className="trade-result" style={{
+                              fontSize: "48px",
+                              fontWeight: "bold",
+                              color: trade.result === "WIN" ? "#00ff88" : 
+                                     trade.result === "LOSE" ? "#ff4444" : "#ffaa00"
+                            }}>
+                              {trade.result}
+                            </div>
+                          </div>
+                          
+                          <div style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            marginBottom: "40px"
+                          }}>
+                            <div style={{
+                              display: "flex",
+                              alignItems: "center",
+                              gap: "32px"
+                            }}>
+                              <div className="trade-arrow" style={{
+                                width: "107px",
+                                height: "107px",
+                                borderRadius: "50%",
+                                background: trade.side === "CALL" ? "#00ff88" : "#ff4444",
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                fontSize: "53px",
+                                color: "#000",
+                                fontWeight: "bold"
+                              }}>
+                                {trade.side === "CALL" ? "↑" : "↓"}
+                              </div>
+                              <span className="trade-amount" style={{
+                                fontSize: "53px",
+                                fontWeight: "bold",
+                                color: trade.side === "CALL" ? "#00ff88" : "#ff4444"
+                              }}>
+                                ${trade.amount}
+                              </span>
+                            </div>
+                            <div className="payout-amount" style={{
+                              fontSize: "48px",
+                              fontWeight: "bold",
+                              color: trade.result === "WIN" ? "#00ff88" : 
+                                     trade.result === "REFUND" ? "#ffaa00" : "#ff4444"
+                            }}>
+                              {trade.result === "WIN" ? "+" : ""}${trade.payout_amount ? trade.payout_amount.toFixed(2) : "0.00"}
+                            </div>
+                          </div>
+                          
+                          <div className="trade-details" style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "center",
+                            fontSize: "37px",
+                            color: "#666"
+                          }}>
+                            <span>{formatDateTime(trade.id / 1000)}</span>
+                            <span>{formatDurationSec(trade.durationSec || trade.duration || (trade.expiryTime - trade.entryTime) || 60)}</span>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {/* View Full History Button */}
+                      {historyAllNewestFirst.length > 20 && (
+                        <button
+                          className="view-full-history-btn"
+                          onClick={() => {
+                            handleCloseTradePage();
+                            setTimeout(() => {
+                              setShowFullHistoryModal(true);
+                            }, 400); // Wait for closing animation
+                          }}
+                          style={{
+                            width: "100%",
+                            padding: "43px",
+                            background: "#00ff88",
+                            border: "none",
+                            borderRadius: "32px",
+                            color: "#000",
+                            fontWeight: "bold",
+                            fontSize: "43px",
+                            cursor: "pointer",
+                            marginTop: "27px",
+                            transition: "all 0.2s ease"
+                          }}
+                          onMouseEnter={(e) => e.target.style.background = "#00ffaa"}
+                          onMouseLeave={(e) => e.target.style.background = "#00ff88"}
+                        >
+                          View Full History
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        
+        {/* Chart and Trading Area */}
         <div style={{ 
-          position: "relative", 
-          background: "#1a1a1a",
+          flex: 1, 
+          display: isMobile ? "flex" : "grid", 
+          flexDirection: isMobile ? "column" : "row",
+          gridTemplateColumns: isMobile ? "none" : "1fr 300px",
+          background: "#0f0f0f",
           minHeight: 0,
-          overflow: "hidden",
           width: "100%",
-          height: "100%",
-          display: "flex",
-          flexDirection: "column"
+          paddingBottom: isMobile ? "320px" : "0"
         }}>
+
+          {/* Chart Area */}
+          <div 
+            className={isMobile ? "chart-area-mobile" : ""}
+            style={{ 
+              position: "relative", 
+              background: "#1a1a1a",
+              minHeight: 0,
+              overflow: "hidden",
+              width: "100%",
+              height: isMobile ? "calc(100vh - 280px)" : "100%",
+              display: isMobile && activeTab !== 'chart' ? "none" : "flex",
+              flexDirection: "column"
+            }}
+          >
           {/* Chart Container */}
-          <div style={{ 
-            position: "relative", 
-            background: "#1a1a1a",
-            minHeight: 0,
-            overflow: "hidden",
-            width: "100%",
-            flex: 1
-          }}>
+          <div 
+            className={isMobile ? "chart-container-mobile" : ""}
+            style={{ 
+              position: "relative", 
+              background: "#1a1a1a",
+              minHeight: 0,
+              overflow: "hidden",
+              width: "100%",
+              flex: 1
+            }}
+          >
           {error && (
             <div style={{ 
               position: "absolute", 
@@ -1988,33 +3621,39 @@ export default function App() {
           )}
 
           {isLoading && (
-            <div style={{ 
-              position: "absolute", 
-              top: "10px", 
-              left: "10px", 
-              background: "#4444ff", 
-              color: "white", 
-              padding: "8px 12px", 
-              borderRadius: "4px", 
-              zIndex: 1000 
-            }}>
+            <div 
+              className="loading-indicator"
+              style={{ 
+                position: "absolute", 
+                top: "10px", 
+                left: "10px", 
+                background: "#4444ff", 
+                color: "white", 
+                padding: "8px 12px", 
+                borderRadius: "4px", 
+                zIndex: 1000 
+              }}
+            >
               Loading...
             </div>
           )}
 
           {/* NEW: Historical data loading indicator */}
           {isLoadingHistorical && (
-            <div style={{ 
-              position: "absolute", 
-              top: "50px", 
-              left: "10px", 
-              background: "#ff8800", 
-              color: "white", 
-              padding: "8px 12px", 
-              borderRadius: "4px", 
-              zIndex: 1000,
-              fontSize: "12px"
-            }}>
+            <div 
+              className="historical-loading-indicator"
+              style={{ 
+                position: "absolute", 
+                top: "50px", 
+                left: "10px", 
+                background: "#ff8800", 
+                color: "white", 
+                padding: "8px 12px", 
+                borderRadius: "4px", 
+                zIndex: 1000,
+                fontSize: "12px"
+              }}
+            >
               📊 Loading historical data...
             </div>
           )}
@@ -2025,138 +3664,90 @@ export default function App() {
             background: "#1a1a1a"
           }} />
 
-          {/* Current Price Display */}
-          <div style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
-            background: "#1a1a1a",
-            border: "1px solid #2a2a2a",
-            borderRadius: "8px",
-            padding: "10px 15px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            minWidth: "120px"
-          }}>
-            <div style={{ 
-              fontSize: "12px", 
-              color: "#666", 
-              marginBottom: "5px" 
-            }}>
-              {symbol} - Binance {streamType.toUpperCase()}
-            </div>
-            <div style={{ 
-              fontSize: "18px", 
-              fontWeight: "bold", 
-              color: "#00ff88" 
-            }}>
-              ${currentPrice.toFixed(2)}
-            </div>
-          </div>
-
-          {/* Trade Countdown Labels in Corner */}
-          <div style={{
-            position: "absolute",
-            top: "20px",
-            right: "20px",
-            display: "flex",
-            flexDirection: "column",
-            gap: "8px",
-            zIndex: 1000
-          }}>
-            {activeTradeLines.map((lineInfo, index) => {
-              const timeLeft = lineInfo.timeLeft || (lineInfo.expiryTime - now);
-              if (timeLeft <= 0) return null;
-              
-              const minutes = Math.floor(timeLeft / 60);
-              const seconds = timeLeft % 60;
-              const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-              
-              return (
-                <div
-                  key={lineInfo.id}
-                  style={{
-                    background: "rgba(26, 26, 26, 0.95)",
-                    border: `2px solid ${lineInfo.side === "CALL" ? "#00ff88" : "#ff4444"}`,
-                    borderRadius: "6px",
-                    padding: "6px 10px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    fontSize: "12px",
-                    fontWeight: "bold",
-                    color: "white",
-                    backdropFilter: "blur(4px)",
-                    boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
-                    minWidth: "120px"
-                  }}
-                >
-                  <div style={{
-                    width: "16px",
-                    height: "16px",
-                    borderRadius: "50%",
-                    background: lineInfo.side === "CALL" ? "#00ff88" : "#ff4444",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontSize: "10px",
-                    color: "#000",
-                    fontWeight: "bold"
-                  }}>
-                    {lineInfo.side === "CALL" ? "↑" : "↓"}
+          {/* Trade Countdown Labels - Centered for Mobile, Corner for Desktop */}
+          {activeTradeLines.length > 0 && (
+            <div 
+              className="trade-countdown-labels"
+              style={{
+                position: "absolute",
+                top: isMobile ? "50%" : "20px",
+                left: isMobile ? "50%" : "auto",
+                right: isMobile ? "auto" : "20px",
+                transform: isMobile ? "translate(-50%, -50%)" : "none",
+                display: "flex",
+                flexDirection: "column",
+                gap: isMobile ? "16px" : "8px",
+                zIndex: 1000,
+                pointerEvents: "none" /* Allow chart interaction */
+              }}
+            >
+              {activeTradeLines.slice(0, isMobile ? 2 : 10).map((lineInfo, index) => {
+                const timeLeft = lineInfo.timeLeft || (lineInfo.expiryTime - now);
+                if (timeLeft <= 0) return null;
+                
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                
+                return (
+                  <div
+                    key={lineInfo.id}
+                    style={{
+                      background: "rgba(26, 26, 26, 0.95)",
+                      border: `2px solid ${lineInfo.side === "CALL" ? "#00ff88" : "#ff4444"}`,
+                      borderRadius: "6px",
+                      padding: isMobile ? "48px 64px" : "6px 10px",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: isMobile ? "48px" : "8px",
+                      fontSize: isMobile ? "16px" : "12px",
+                      fontWeight: "bold",
+                      color: "white",
+                      backdropFilter: "blur(4px)",
+                      boxShadow: "0 2px 8px rgba(0,0,0,0.3)",
+                      minWidth: isMobile ? "720px" : "120px",
+                      pointerEvents: "none" /* Allow chart interaction through countdowns */
+                    }}
+                  >
+                    <div style={{
+                      width: isMobile ? "120px" : "16px",
+                      height: isMobile ? "120px" : "16px",
+                      borderRadius: "50%",
+                      background: lineInfo.side === "CALL" ? "#00ff88" : "#ff4444",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      fontSize: isMobile ? "24px" : "10px",
+                      color: "#000",
+                      fontWeight: "bold"
+                    }}>
+                      {lineInfo.side === "CALL" ? "↑" : "↓"}
+                    </div>
+                                            <span style={{ fontSize: isMobile ? "36px" : "12px" }}>${lineInfo.amount}</span>
+                        <span style={{color: "#666", fontSize: isMobile ? "36px" : "12px"}}>|</span>
+                        <span style={{ color: lineInfo.side === "CALL" ? "#00ff88" : "#ff4444", fontSize: isMobile ? "36px" : "12px" }}>
+                      {countdownText}
+                    </span>
                   </div>
-                  <span>${lineInfo.amount}</span>
-                  <span style={{color: "#666"}}>|</span>
-                  <span style={{ color: lineInfo.side === "CALL" ? "#00ff88" : "#ff4444" }}>
-                    {countdownText}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
 
-          {/* Trade Lines Status */}
-          <div style={{
-            position: "absolute",
-            bottom: "20px",
-            right: "20px",
-            background: "#1a1a1a",
-            border: "1px solid #2a2a2a",
-            borderRadius: "8px",
-            padding: "10px 15px",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            minWidth: "120px"
-          }}>
-            <div style={{ 
-              fontSize: "12px", 
-              color: "#666", 
-              marginBottom: "5px" 
-            }}>
-              Active Trade Lines
-            </div>
-            <div style={{ 
-              fontSize: "18px", 
-              fontWeight: "bold", 
-              color: activeTradeLines.length > 0 ? "#00ff88" : "#666"
-            }}>
-              {activeTradeLines.length}
-            </div>
-          </div>
+
         </div>
         </div>
 
         {/* Right Trading Panel */}
         <div style={{
-          width: "300px",
-          minWidth: "300px",
-          maxWidth: "300px",
+          width: isMobile ? "100%" : "300px",
+          minWidth: isMobile ? "100%" : "300px",
+          maxWidth: isMobile ? "100%" : "300px",
           background: "#1a1a1a",
-          borderLeft: "1px solid #2a2a2a",
+          borderLeft: isMobile ? "none" : "1px solid #2a2a2a",
+          borderTop: isMobile ? "1px solid #2a2a2a" : "none",
           padding: "20px",
-          display: "flex",
+          display: isMobile && activeTab !== 'panel' ? "none" : "flex",
           flexDirection: "column",
           gap: "20px",
           overflow: "hidden"
@@ -2164,191 +3755,345 @@ export default function App() {
           {/* Asset Info */}
           <div style={{
             background: "#2a2a2a",
-            padding: "15px",
+            padding: isMobile ? "25px" : "15px",
             borderRadius: "8px",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between"
           }}>
             <div>
-              <div style={{ fontSize: "16px", fontWeight: "bold" }}>{symbol}</div>
+                                <div style={{ fontSize: isMobile ? "16px" : "16px", fontWeight: "bold" }}>{symbol}</div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div style={{ fontSize: "14px", color: "#00ff88" }}>{payout}%</div>
+                              <div style={{ fontSize: isMobile ? "16px" : "14px", color: "#00ff88" }}>{payout}%</div>
             </div>
           </div>
 
-          {/* Time Selection */}
-          <div style={{
-            background: "#2a2a2a",
-            padding: "10px",
-            borderRadius: "8px",
-            position: "relative"
-          }}>
-            <div style={{ 
-              fontSize: "12px", 
-              color: "#666", 
-              marginBottom: "8px"
-            }}>
-              Time
-            </div>
-            <input
-              type="text"
-              value={formatDuration(duration)}
-              onClick={() => setShowTimePickerPopup(true)}
-              readOnly
-              style={{
-                width: "100%",
-                background: "#1a1a1a",
-                border: "none",
-                borderRadius: "4px",
-                padding: "8px",
-                color: "white",
-                textAlign: "center",
-                fontSize: "16px",
-                fontWeight: "bold",
-                cursor: "pointer"
-              }}
-            />
-            
-            {/* NEW: Time Picker Popup */}
-            {showTimePickerPopup && (
-              <div className="time-picker-popup" style={{
-                position: "absolute",
-                top: "100%",
-                left: "0",
-                right: "0",
-                background: "#2a2a2a",
-                border: "1px solid #444",
-                borderRadius: "8px",
-                padding: "10px",
-                zIndex: 1000,
-                marginTop: "5px"
+          {/* Time Selection - Hidden on Mobile (will be moved to bottom) */}
+          {!isMobile && (
+            <div style={{ position: "relative" }}>
+              <div style={{
+                position: "relative",
+                display: "flex",
+                alignItems: "center"
               }}>
-                <div style={{ 
-                  fontSize: "12px", 
-                  color: "#666", 
-                  marginBottom: "8px",
-                  textAlign: "center"
+                <input
+                  type="text"
+                  value={formatDuration(duration)}
+                  onClick={() => setShowTimePickerPopup(true)}
+                  readOnly
+                  placeholder="Time"
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    borderRadius: "18px",
+                    padding: "8px 40px",
+                    color: "white",
+                    textAlign: "center",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    transition: "all 0.3s ease"
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                    e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.background = "transparent";
+                    e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                  }}
+                />
+                <button
+                  onClick={() => {
+                    const newDuration = duration <= 60 ? Math.max(10, duration - 10) : duration - 60;
+                    setDuration(newDuration);
+                  }}
+                  style={{
+                    position: "absolute",
+                    left: "8px",
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    width: "24px",
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.3s ease"
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.color = "white";
+                  }}
+                >
+                  -
+                </button>
+                <button
+                  onClick={() => {
+                    const newDuration = duration < 60 ? duration + 10 : duration + 60;
+                    setDuration(newDuration);
+                  }}
+                  style={{
+                    position: "absolute",
+                    right: "8px",
+                    background: "transparent",
+                    border: "none",
+                    color: "white",
+                    fontSize: "18px",
+                    fontWeight: "bold",
+                    cursor: "pointer",
+                    width: "24px",
+                    height: "24px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    transition: "all 0.3s ease"
+                  }}
+                  onMouseOver={(e) => {
+                    e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                  }}
+                  onMouseOut={(e) => {
+                    e.target.style.color = "white";
+                  }}
+                >
+                  +
+                </button>
+              </div>
+              
+              {/* NEW: Time Picker Popup */}
+              {showTimePickerPopup && (
+                <div className="time-picker-popup" style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: "0",
+                  right: "0",
+                  background: "#2a2a2a",
+                  border: "1px solid #444",
+                  borderRadius: "8px",
+                  padding: "10px",
+                  zIndex: 1000,
+                  marginTop: "5px"
                 }}>
-                  Quick Options
-                </div>
-                <div style={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 1fr",
-                  gap: "5px"
-                }}>
-                  {quickTimeOptions.map((option) => (
-                    <button
-                      key={option.value}
-                      onClick={() => {
-                        setDuration(option.value);
-                        setShowTimePickerPopup(false);
+                  <div style={{ 
+                    fontSize: "12px", 
+                    color: "#666", 
+                    marginBottom: "8px",
+                    textAlign: "center"
+                  }}>
+                    Quick Options
+                  </div>
+                  <div style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: "5px"
+                  }}>
+                    {quickTimeOptions.map((option) => (
+                      <button
+                        key={option.value}
+                        onClick={() => {
+                          setDuration(option.value);
+                          setShowTimePickerPopup(false);
+                        }}
+                        style={{
+                          padding: "6px 8px",
+                          background: "#1a1a1a",
+                          border: "1px solid #444",
+                          borderRadius: "4px",
+                          color: "white",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          textAlign: "center"
+                        }}
+                      >
+                        {option.label}
+                      </button>
+                    ))}
+                  </div>
+                  <div style={{ 
+                    marginTop: "8px", 
+                    paddingTop: "8px", 
+                    borderTop: "1px solid #444",
+                    textAlign: "center"
+                  }}>
+                    <input
+                      type="text"
+                      placeholder="Custom (MM:SS)"
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        const parts = value.split(':');
+                        if (parts.length === 2) {
+                          const minutes = parseInt(parts[0]) || 0;
+                          const seconds = parseInt(parts[1]) || 0;
+                          setDuration(minutes * 60 + seconds);
+                        }
                       }}
                       style={{
-                        padding: "6px 8px",
-                        background: "#1a1a1a",
-                        border: "1px solid #444",
-                        borderRadius: "4px",
+                        width: "100%",
+                        background: "transparent",
+                        border: "1px solid rgba(255, 255, 255, 0.2)",
+                        borderRadius: "18px",
+                        padding: "6px",
                         color: "white",
                         fontSize: "12px",
-                        cursor: "pointer",
-                        textAlign: "center"
+                        textAlign: "center",
+                        transition: "all 0.3s ease"
                       }}
-                    >
-                      {option.label}
-                    </button>
-                  ))}
+                      onMouseOver={(e) => {
+                        e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                        e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                      }}
+                      onMouseOut={(e) => {
+                        e.target.style.background = "transparent";
+                        e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                      }}
+                    />
+                  </div>
                 </div>
-                <div style={{ 
-                  marginTop: "8px", 
-                  paddingTop: "8px", 
-                  borderTop: "1px solid #444",
-                  textAlign: "center"
-                }}>
-                  <input
-                    type="text"
-                    placeholder="Custom (MM:SS)"
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      const parts = value.split(':');
-                      if (parts.length === 2) {
-                        const minutes = parseInt(parts[0]) || 0;
-                        const seconds = parseInt(parts[1]) || 0;
-                        setDuration(minutes * 60 + seconds);
-                      }
-                    }}
-                    style={{
-                      width: "100%",
-                      background: "#1a1a1a",
-                      border: "1px solid #444",
-                      borderRadius: "4px",
-                      padding: "6px",
-                      color: "white",
-                      fontSize: "12px",
-                      textAlign: "center"
-                    }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Investment Selection */}
-          <div style={{
-            background: "#2a2a2a",
-            padding: "10px",
-            borderRadius: "8px"
-          }}>
-            <div style={{ 
-              fontSize: "12px", 
-              color: "#666", 
-              marginBottom: "8px"
-            }}>
-              Investment
+              )}
             </div>
-            <input
-              type="number"
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              style={{
-                width: "100%",
-                background: "#1a1a1a",
-                border: "none",
-                borderRadius: "4px",
-                padding: "8px",
-                color: "white",
-                textAlign: "center",
-                fontSize: "16px",
-                fontWeight: "bold"
-              }}
-            />
-          </div>
+          )}
 
-          {/* Trade Buttons */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-            <button
-              onClick={() => place("CALL")}
-              disabled={isPlacingTrade}
-              style={{
-                width: "100%",
-                height: "60px",
-                background: isPlacingTrade ? "#666" : "#00ff88",
-                border: "none",
-                borderRadius: "8px",
-                color: "#000",
-                fontWeight: "bold",
-                fontSize: "16px",
-                cursor: isPlacingTrade ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px"
-              }}
-            >
-              <span>↑</span>
-              <span>{isPlacingTrade ? "Placing..." : "Up"}</span>
-            </button>
+          {/* Investment Selection - Hidden on Mobile (will be moved to bottom) */}
+          {!isMobile && (
+            <div style={{
+              position: "relative",
+              display: "flex",
+              alignItems: "center"
+            }}>
+                              <input
+                  type="number"
+                  value={amount}
+                  onChange={(e) => setAmount(Number(e.target.value))}
+                  placeholder="Investment"
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "1px solid rgba(255, 255, 255, 0.2)",
+                    borderRadius: "18px",
+                    padding: "8px 40px",
+                    color: "white",
+                    textAlign: "center",
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    transition: "all 0.3s ease",
+                    textAlignLast: "center",
+                    WebkitTextAlignLast: "center"
+                  }}
+                onMouseOver={(e) => {
+                  e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                  e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.background = "transparent";
+                  e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                }}
+              />
+              <button
+                onClick={() => setAmount(Math.max(1, amount - 1))}
+                style={{
+                  position: "absolute",
+                  left: "8px",
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.3s ease"
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.color = "white";
+                }}
+              >
+                -
+              </button>
+              <button
+                onClick={() => setAmount(amount + 1)}
+                style={{
+                  position: "absolute",
+                  right: "8px",
+                  background: "transparent",
+                  border: "none",
+                  color: "white",
+                  fontSize: "18px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  width: "24px",
+                  height: "24px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  transition: "all 0.3s ease"
+                }}
+                onMouseOver={(e) => {
+                  e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                }}
+                onMouseOut={(e) => {
+                  e.target.style.color = "white";
+                }}
+              >
+                +
+              </button>
+            </div>
+          )}
+
+          {/* Trade Buttons - Hidden on Mobile (will be moved to bottom) */}
+          {!isMobile && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                         <button
+               onClick={() => place("CALL")}
+               disabled={isPlacingTrade}
+               style={{
+                 width: "100%",
+                 height: "60px",
+                 background: isPlacingTrade ? "#666" : "#00ff88",
+                 border: "none",
+                 borderRadius: "8px",
+                 color: "#000",
+                 fontWeight: "bold",
+                 fontSize: "16px",
+                 cursor: isPlacingTrade ? "not-allowed" : "pointer",
+                 display: "flex",
+                 alignItems: "center",
+                 justifyContent: "center",
+                 gap: "10px",
+                 transition: "all 0.3s ease",
+                 transform: "translateY(0)",
+                 boxShadow: "0 4px 8px rgba(0, 255, 136, 0.3)"
+               }}
+               onMouseOver={(e) => {
+                 if (!isPlacingTrade) {
+                   e.target.style.transform = "translateY(-3px)";
+                   e.target.style.boxShadow = "0 8px 16px rgba(0, 255, 136, 0.5)";
+                   e.target.style.background = "#00ffaa";
+                 }
+               }}
+               onMouseOut={(e) => {
+                 if (!isPlacingTrade) {
+                   e.target.style.transform = "translateY(0)";
+                   e.target.style.boxShadow = "0 4px 8px rgba(0, 255, 136, 0.3)";
+                   e.target.style.background = "#00ff88";
+                 }
+               }}
+             >
+               <span>↑</span>
+               <span>{isPlacingTrade ? "Placing..." : "Up"}</span>
+             </button>
             
             <div style={{ 
               textAlign: "center", 
@@ -2360,32 +4105,52 @@ export default function App() {
               Your payout: ${payoutAmount.toFixed(2)}
             </div>
             
-            <button
-              onClick={() => place("PUT")}
-              disabled={isPlacingTrade}
-              style={{
-                width: "100%",
-                height: "60px",
-                background: isPlacingTrade ? "#666" : "#ff4444",
-                border: "none",
-                borderRadius: "8px",
-                color: "white",
-                fontWeight: "bold",
-                fontSize: "16px",
-                cursor: isPlacingTrade ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "10px"
-              }}
-            >
-              <span>↓</span>
-              <span>{isPlacingTrade ? "Placing..." : "Down"}</span>
-            </button>
+                         <button
+               onClick={() => place("PUT")}
+               disabled={isPlacingTrade}
+               style={{
+                 width: "100%",
+                 height: "60px",
+                 background: isPlacingTrade ? "#666" : "#ff4444",
+                 border: "none",
+                 borderRadius: "8px",
+                 color: "white",
+                 fontWeight: "bold",
+                 fontSize: "16px",
+                 cursor: isPlacingTrade ? "not-allowed" : "pointer",
+                 display: "flex",
+                 alignItems: "center",
+                 justifyContent: "center",
+                 gap: "10px",
+                 transition: "all 0.3s ease",
+                 transform: "translateY(0)",
+                 boxShadow: "0 4px 8px rgba(255, 68, 68, 0.3)"
+               }}
+               onMouseOver={(e) => {
+                 if (!isPlacingTrade) {
+                   e.target.style.transform = "translateY(-3px)";
+                   e.target.style.boxShadow = "0 8px 16px rgba(255, 68, 68, 0.5)";
+                   e.target.style.background = "#ff6666";
+                 }
+               }}
+               onMouseOut={(e) => {
+                 if (!isPlacingTrade) {
+                   e.target.style.transform = "translateY(0)";
+                   e.target.style.boxShadow = "0 4px 8px rgba(255, 68, 68, 0.3)";
+                   e.target.style.background = "#ff4444";
+                 }
+               }}
+             >
+               <span>↓</span>
+               <span>{isPlacingTrade ? "Placing..." : "Down"}</span>
+             </button>
           </div>
+          )}
+
+          {/* Refill Balance button moved to account switcher dropdown */}
 
           {/* Trades Section */}
-          <div style={{
+          <div className="trades-section" style={{
             background: "#2a2a2a",
             padding: "15px",
             borderRadius: "8px"
@@ -2427,7 +4192,7 @@ export default function App() {
                 </div>
               ) : (
                 <>
-                  <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                  <div className="history-trades" style={{ maxHeight: "200px", overflowY: "auto" }}>
                     {historyTrades.map((t) => (
                       <div 
                         key={t.id} 
@@ -2546,11 +4311,10 @@ export default function App() {
                   fontSize: "12px",
                   padding: "20px"
                 }}>
-                  <div style={{ fontSize: "24px", marginBottom: "10px" }}>📄⏰</div>
                   No active trades
                 </div>
               ) : (
-                <div style={{ maxHeight: "200px", overflowY: "auto" }}>
+                <div className="active-trades" style={{ maxHeight: "200px", overflowY: "auto" }}>
                   {activeTradesForDisplay.map((t) => {
                     const total = Number(duration); // Use current duration setting
                     const remaining = Math.max(0, t.expiryTime - now);
@@ -2659,6 +4423,718 @@ export default function App() {
             )}
           </div>
         </div>
+
+        {/* Mobile Sidebar Section */}
+        {isMobile && activeTab === 'sidebar' && (
+          <div style={{
+            width: "100%",
+            background: "#1a1a1a",
+            borderTop: "1px solid #2a2a2a",
+            padding: "20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "20px",
+            minHeight: "400px"
+          }}>
+            {/* Account Balances */}
+            <div style={{
+              background: "#2a2a2a",
+              padding: "15px",
+              borderRadius: "8px"
+            }}>
+              <div style={{ 
+                fontSize: "14px", 
+                color: "#666", 
+                marginBottom: "10px",
+                fontWeight: "bold"
+              }}>
+                Account Balances
+              </div>
+              <div style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: "10px"
+              }}>
+                <div style={{
+                  background: "#1a1a1a",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #444"
+                }}>
+                  <div style={{ fontSize: "12px", color: "#666" }}>Demo Account</div>
+                  <div style={{ fontSize: "18px", fontWeight: "bold", color: "#00ff88" }}>
+                    ${demoBalance.toFixed(2)}
+                  </div>
+                </div>
+                <div style={{
+                  background: "#1a1a1a",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  border: "1px solid #444"
+                }}>
+                  <div style={{ fontSize: "12px", color: "#666" }}>Real Account</div>
+                  <div style={{ fontSize: "18px", fontWeight: "bold", color: "#00ff88" }}>
+                    ${realBalance.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Active Trades */}
+            <div style={{
+              background: "#2a2a2a",
+              padding: "15px",
+              borderRadius: "8px"
+            }}>
+              <div style={{ 
+                fontSize: "14px", 
+                color: "#666", 
+                marginBottom: "10px",
+                fontWeight: "bold"
+              }}>
+                Active Trades ({activeTradeLines.length})
+              </div>
+              {activeTradeLines.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#666", padding: "20px" }}>
+                  No active trades
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {activeTradeLines.map((lineInfo) => {
+                    const timeLeft = lineInfo.timeLeft || (lineInfo.expiryTime - now);
+                    if (timeLeft <= 0) return null;
+                    
+                    const minutes = Math.floor(timeLeft / 60);
+                    const seconds = timeLeft % 60;
+                    const countdownText = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+                    
+                    return (
+                      <div key={lineInfo.id} style={{
+                        background: "#1a1a1a",
+                        padding: "10px",
+                        borderRadius: "6px",
+                        border: `1px solid ${lineInfo.side === "CALL" ? "#00ff88" : "#ff4444"}`,
+                        borderLeft: `4px solid ${lineInfo.side === "CALL" ? "#00ff88" : "#ff4444"}`
+                      }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                          <span style={{ fontWeight: "bold" }}>{lineInfo.symbol}</span>
+                          <span style={{ 
+                            color: lineInfo.side === "CALL" ? "#00ff88" : "#ff4444",
+                            fontSize: "18px"
+                          }}>
+                            {lineInfo.side === "CALL" ? "↑" : "↓"}
+                          </span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span>${lineInfo.amount}</span>
+                          <span style={{ color: "#ffaa00", fontWeight: "bold" }}>{countdownText}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Trade History */}
+            <div style={{
+              background: "#2a2a2a",
+              padding: "15px",
+              borderRadius: "8px"
+            }}>
+              <div style={{ 
+                fontSize: "14px", 
+                color: "#666", 
+                marginBottom: "10px",
+                fontWeight: "bold"
+              }}>
+                Recent History
+              </div>
+              {historyNewestFirst.length === 0 ? (
+                <div style={{ textAlign: "center", color: "#666", padding: "20px" }}>
+                  No trades yet
+                </div>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {historyNewestFirst.slice(0, 5).map((t) => (
+                    <div key={t.id} style={{
+                      background: "#1a1a1a",
+                      padding: "10px",
+                      borderRadius: "6px",
+                      border: `1px solid ${t.result === "WIN" ? "#00ff88" : t.result === "LOSE" ? "#ff4444" : "#ffaa00"}`,
+                      borderLeft: `4px solid ${t.result === "WIN" ? "#00ff88" : t.result === "LOSE" ? "#ff4444" : "#ffaa00"}`
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "5px" }}>
+                        <span style={{ fontWeight: "bold" }}>{t.symbol}</span>
+                        <span style={{ 
+                          color: t.result === "WIN" ? "#00ff88" : t.result === "LOSE" ? "#ff4444" : "#ffaa00",
+                          fontSize: "12px",
+                          fontWeight: "bold"
+                        }}>
+                          {t.result}
+                        </span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span>${t.amount}</span>
+                        <span style={{ 
+                          color: t.result === "WIN" ? "#00ff88" : "#ff4444",
+                          fontWeight: "bold"
+                        }}>
+                          {t.result === "WIN" ? "+" : ""}${t.payout_amount ? t.payout_amount.toFixed(2) : "0.00"}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <button
+                onClick={() => setShowFullHistoryModal(true)}
+                style={{
+                  width: "100%",
+                  padding: "10px",
+                  background: "#00ff88",
+                  border: "none",
+                  borderRadius: "4px",
+                  color: "#000",
+                  fontWeight: "bold",
+                  fontSize: "14px",
+                  cursor: "pointer",
+                  marginTop: "10px"
+                }}
+              >
+                View Full History
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Mobile Trading Controls - Bottom Section */}
+        {isMobile && (
+          <div 
+            className="mobile-trading-controls"
+            style={{
+              position: "fixed",
+              bottom: 0,
+              left: 0,
+              right: 0,
+              background: "#1a1a1a",
+              borderTop: "2px solid #2a2a2a",
+              padding: "20px",
+              zIndex: 1000,
+              display: "flex",
+              flexDirection: "column",
+              gap: "15px",
+              minHeight: "280px"
+            }}
+          >
+            {/* Time, Payout, and Investment Row */}
+            <div className="time-payout-investment-row" style={{
+              display: "flex",
+              gap: "10px",
+              alignItems: "center"
+            }}>
+              {/* Time Selection - 35% */}
+              <div style={{
+                flex: "0 0 35%",
+                position: "relative"
+              }}>
+                <div style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center"
+                }}>
+                  <input
+                    type="text"
+                    value={formatDuration(duration)}
+                    onClick={() => setShowTimePickerPopup(true)}
+                    readOnly
+                    placeholder="Time"
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "18px",
+                      padding: "12px 40px",
+                      color: "white",
+                      textAlign: "center",
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = "transparent";
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                    }}
+                  />
+                  <button
+                    onClick={() => {
+                      const newDuration = duration <= 60 ? Math.max(10, duration - 10) : duration - 60;
+                      setDuration(newDuration);
+                    }}
+                    style={{
+                      position: "absolute",
+                      left: "8px",
+                      background: "transparent",
+                      border: "none",
+                      color: "white",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.color = "white";
+                    }}
+                  >
+                    -
+                  </button>
+                  <button
+                    onClick={() => {
+                      const newDuration = duration < 60 ? duration + 10 : duration + 60;
+                      setDuration(newDuration);
+                    }}
+                    style={{
+                      position: "absolute",
+                      right: "8px",
+                      color: "white",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.color = "white";
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+                
+                {/* Time Picker Popup for Mobile */}
+                {showTimePickerPopup && (
+                  <div className="time-picker-popup" style={{
+                    position: "absolute",
+                    bottom: "100%",
+                    left: "0",
+                    right: "0",
+                    background: "#2a2a2a",
+                    border: "1px solid #444",
+                    borderRadius: "8px",
+                    padding: "15px",
+                    zIndex: 1000,
+                    marginBottom: "10px"
+                  }}>
+                    <div style={{ 
+                      fontSize: "14px", 
+                      color: "#666", 
+                      marginBottom: "10px",
+                      textAlign: "center"
+                    }}>
+                      Quick Options
+                    </div>
+                    <div style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr",
+                      gap: "8px"
+                    }}>
+                      {quickTimeOptions.map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => {
+                            setDuration(option.value);
+                            setShowTimePickerPopup(false);
+                          }}
+                          style={{
+                            padding: "10px 8px",
+                            background: "#1a1a1a",
+                            border: "1px solid #444",
+                            borderRadius: "4px",
+                            color: "white",
+                            fontSize: "14px",
+                            cursor: "pointer",
+                            textAlign: "center"
+                          }}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                    <div style={{ 
+                      marginTop: "10px", 
+                      paddingTop: "10px", 
+                      borderTop: "1px solid #444",
+                      textAlign: "center"
+                    }}>
+                      <input
+                        type="text"
+                        placeholder="Custom (MM:SS)"
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          const parts = value.split(':');
+                          if (parts.length === 2) {
+                            const minutes = parseInt(parts[0]) || 0;
+                            const seconds = parseInt(parts[1]) || 0;
+                            setDuration(minutes * 60 + seconds);
+                          }
+                        }}
+                        style={{
+                          width: "100%",
+                          background: "transparent",
+                          border: "1px solid rgba(255, 255, 255, 0.2)",
+                          borderRadius: "18px",
+                          padding: "10px",
+                          color: "white",
+                          fontSize: "14px",
+                          textAlign: "center",
+                          transition: "all 0.3s ease"
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = "transparent";
+                          e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Payout Display - 30% */}
+              <div style={{
+                flex: "0 0 30%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center"
+              }}>
+                <div style={{
+                  background: "transparent",
+                  border: "1px solid rgba(255, 255, 255, 0.2)",
+                  borderRadius: "18px",
+                  padding: "12px 16px",
+                  textAlign: "center",
+                  minHeight: "52px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}>
+                  <div style={{
+                    fontSize: "14px",
+                    color: "#00ff88",
+                    fontWeight: "bold"
+                  }}>
+                    Payout: ${payoutAmount.toFixed(2)}
+                  </div>
+                </div>
+              </div>
+
+              {/* Investment Selection - 35% */}
+              <div style={{
+                flex: "0 0 35%"
+              }}>
+                <div style={{
+                  position: "relative",
+                  display: "flex",
+                  alignItems: "center"
+                }}>
+                  <input
+                    type="number"
+                    value={amount}
+                    onChange={(e) => setAmount(Number(e.target.value))}
+                    placeholder="Investment"
+                    style={{
+                      width: "100%",
+                      background: "transparent",
+                      border: "1px solid rgba(255, 255, 255, 0.2)",
+                      borderRadius: "18px",
+                      padding: "12px 40px",
+                      color: "white",
+                      textAlign: "center",
+                      fontSize: "18px",
+                      fontWeight: "bold",
+                      transition: "all 0.3s ease",
+                      textAlignLast: "center",
+                      WebkitTextAlignLast: "center"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.background = "rgba(255, 255, 255, 0.1)";
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.3)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.background = "transparent";
+                      e.target.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                    }}
+                  />
+                  <button
+                    onClick={() => setAmount(Math.max(1, amount - 1))}
+                    style={{
+                      position: "absolute",
+                      left: "8px",
+                      background: "transparent",
+                      border: "none",
+                      color: "white",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.color = "white";
+                    }}
+                  >
+                    -
+                  </button>
+                  <button
+                    onClick={() => setAmount(amount + 1)}
+                    style={{
+                      position: "absolute",
+                      right: "8px",
+                      background: "transparent",
+                      border: "none",
+                      color: "white",
+                      fontSize: "20px",
+                      fontWeight: "bold",
+                      cursor: "pointer",
+                      width: "28px",
+                      height: "28px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      transition: "all 0.3s ease"
+                    }}
+                    onMouseOver={(e) => {
+                      e.target.style.color = "rgba(255, 255, 255, 0.8)";
+                    }}
+                    onMouseOut={(e) => {
+                      e.target.style.color = "white";
+                    }}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Trade Buttons Row */}
+            <div className="trade-buttons" style={{
+              display: "flex",
+              gap: "15px",
+              alignItems: "center"
+            }}>
+              {/* Down Button */}
+              <button
+                onClick={() => place("PUT")}
+                disabled={isPlacingTrade}
+                style={{
+                  flex: 1,
+                  height: "70px",
+                  background: isPlacingTrade ? "#666" : "#ff4444",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "white",
+                  fontWeight: "bold",
+                  fontSize: "20px",
+                  cursor: isPlacingTrade ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  transition: "all 0.3s ease",
+                  transform: "translateY(0)",
+                  boxShadow: "0 4px 8px rgba(255, 68, 68, 0.3)"
+                }}
+                onMouseOver={(e) => {
+                  if (!isPlacingTrade) {
+                    e.target.style.transform = "translateY(-3px)";
+                    e.target.style.boxShadow = "0 8px 16px rgba(255, 68, 68, 0.5)";
+                    e.target.style.background = "#ff6666";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isPlacingTrade) {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 4px 8px rgba(255, 68, 68, 0.3)";
+                    e.target.style.background = "#ff4444";
+                  }
+                }}
+              >
+                <span style={{ fontSize: "24px" }}>↓</span>
+                <span>{isPlacingTrade ? "Placing..." : "Down"}</span>
+              </button>
+
+              {/* Up Button */}
+              <button
+                onClick={() => place("CALL")}
+                disabled={isPlacingTrade}
+                style={{
+                  flex: 1,
+                  height: "70px",
+                  background: isPlacingTrade ? "#666" : "#00ff88",
+                  border: "none",
+                  borderRadius: "8px",
+                  color: "#000",
+                  fontWeight: "bold",
+                  fontSize: "20px",
+                  cursor: isPlacingTrade ? "not-allowed" : "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "10px",
+                  transition: "all 0.3s ease",
+                  transform: "translateY(0)",
+                  boxShadow: "0 4px 8px rgba(0, 255, 136, 0.3)"
+                }}
+                onMouseOver={(e) => {
+                  if (!isPlacingTrade) {
+                    e.target.style.transform = "translateY(-3px)";
+                    e.target.style.boxShadow = "0 8px 16px rgba(0, 255, 136, 0.5)";
+                    e.target.style.background = "#00ffaa";
+                  }
+                }}
+                onMouseOut={(e) => {
+                  if (!isPlacingTrade) {
+                    e.target.style.transform = "translateY(0)";
+                    e.target.style.boxShadow = "0 4px 8px rgba(0, 255, 136, 0.3)";
+                    e.target.style.background = "#00ff88";
+                  }
+                }}
+              >
+                <span style={{ fontSize: "24px" }}>↑</span>
+                <span>{isPlacingTrade ? "Placing..." : "Up"}</span>
+              </button>
+            </div>
+
+
+
+            {/* Navigation Buttons - Integrated into Trading Controls */}
+            <div style={{
+              display: "flex",
+              gap: "10px",
+              marginTop: "10px"
+            }}>
+              {/* Chart Button - 33% */}
+              <button 
+                onClick={() => setActiveTab('chart')}
+                style={{
+                  flex: "0 0 33%",
+                  background: activeTab === 'chart' ? "#2a2a2a" : "#1a1a1a",
+                  border: "1px solid #2a2a2a",
+                  color: activeTab === 'chart' ? "#00ff88" : "#666",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <img 
+                  src="/assets/landing/line-chart-line-graph-svgrepo-com.svg" 
+                  alt="Chart" 
+                  style={{ 
+                    width: "40px", 
+                    height: "40px",
+                    filter: activeTab === 'chart' ? "brightness(0) saturate(100%) invert(84%) sepia(100%) saturate(1000%) hue-rotate(60deg) brightness(1) contrast(1)" : "brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(1) contrast(1)"
+                  }} 
+                />
+              </button>
+              
+              {/* Trades Button - 33% */}
+              <button
+                onClick={() => {
+                  setShowMobileTradePage(true);
+                  setActiveTab('trades'); // Set default tab to active trades
+                }}
+                style={{
+                  flex: "0 0 33%",
+                  background: "#1a1a1a",
+                  border: "1px solid #2a2a2a",
+                  color: "#666",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <img 
+                  src="/assets/landing/history-3-svgrepo-com.svg" 
+                  alt="Trades" 
+                  style={{ 
+                    width: "40px", 
+                    height: "40px",
+                    filter: "brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(1) contrast(1)"
+                  }} 
+                />
+              </button>
+              
+              {/* Bank Button - 33% */}
+              <button
+                onClick={() => window.location.href = 'http://localhost:5173/deposit'}
+                style={{
+                  flex: "0 0 33%",
+                  background: "#1a1a1a",
+                  border: "1px solid #2a2a2a",
+                  color: "#666",
+                  padding: "12px",
+                  borderRadius: "6px",
+                  fontWeight: "500",
+                  cursor: "pointer",
+                  transition: "all 0.2s ease",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center"
+                }}
+              >
+                <img 
+                  src="/assets/landing/bank-svgrepo-com.svg" 
+                  alt="Bank" 
+                  style={{ 
+                    width: "40px", 
+                    height: "40px",
+                    filter: "brightness(0) saturate(100%) invert(100%) sepia(0%) saturate(0%) hue-rotate(0deg) brightness(1) contrast(1)"
+                  }} 
+                />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* NEW: Full History Modal */}
